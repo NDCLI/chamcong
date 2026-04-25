@@ -183,7 +183,10 @@ function App() {
     const mData = data.months[month] || { other: 0, ot: {} };
 
     let h150 = 0, h200 = 0, h300 = 0;
-    Object.values(mData.ot).forEach(ot => {
+    // Only sum OT for dates that are actually in this month's range
+    dates.forEach(d => {
+      const dateIso = d.toISOString().split('T')[0];
+      const ot = mData.ot[dateIso] || [0, 0, 0];
       h150 += ot[0] || 0;
       h200 += ot[1] || 0;
       h300 += ot[2] || 0;
