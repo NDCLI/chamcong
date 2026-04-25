@@ -35,17 +35,15 @@ export const defaultConfig: Config = {
     gio_chuan: 208
   },
   pit_rates: [
-    { limit: 5000000, rate: 0.05, deduction: 0 },
-    { limit: 10000000, rate: 0.10, deduction: 250000 },
-    { limit: 18000000, rate: 0.15, deduction: 750000 },
-    { limit: 32000000, rate: 0.20, deduction: 1650000 },
-    { limit: 52000000, rate: 0.25, deduction: 3250000 },
-    { limit: 80000000, rate: 0.30, deduction: 5850000 },
-    { limit: 999999999999, rate: 0.35, deduction: 9850000 }
+    { limit: 10000000, rate: 0.05, deduction: 0 },
+    { limit: 30000000, rate: 0.10, deduction: 500000 },
+    { limit: 60000000, rate: 0.20, deduction: 3500000 },
+    { limit: 100000000, rate: 0.30, deduction: 9500000 },
+    { limit: 999999999999, rate: 0.35, deduction: 14500000 }
   ],
   pit_deductions: {
-    personal: 11000000,
-    dependent: 4400000
+    personal: 15500000,
+    dependent: 6200000
   },
   holidays: [
     "01-01", "04-30", "05-01", "09-02"
