@@ -61,22 +61,54 @@ export function pf(s: string | number): number {
   if (typeof s === 'number') return s;
   s = s.trim();
   if (!s) return 0.0;
-  if (s.includes(',') && s.includes('.')) {
-    return parseFloat(s.replace(/\./g, '').replace(/,/g, '.'));
-  }
-  if (s.includes(',')) {
-    return parseFloat(s.replace(/,/g, '.'));
-  }
-  const dotCount = (s.match(/\./g) || []).length;
-  if (dotCount > 1) {
-    return parseFloat(s.replace(/\./g, ''));
-  }
-  if (dotCount === 1) {
-    const parts = s.split('.');
-    if (parts[1].length === 3 && !isNaN(Number(parts[0])) && !isNaN(Number(parts[1]))) {
-      return parseFloat(parts[0] + parts[1]);
+  
+  // if it's like "3,696,500" or "3.696.500"
+  // We need to determine if , or . is the decimal separator.
+  const hasComma = s.includes(',');
+  const hasDot = s.includes('.');
+
+  if (hasComma && hasDot) {
+    // Both exist. The last one is usually the decimal.
+    const commaIdx = s.lastIndexOf(',');
+    const dotIdx = s.lastIndexOf('.');
+    if (commaIdx > dotIdx) {
+      // 1.234,56 -> VN style
+      return parseFloat(s.replace(/\./g, '').replace(/,/g, '.'));
+    } else {
+      // 1,234.56 -> EN style
+      return parseFloat(s.replace(/,/g, ''));
     }
   }
+
+  if (hasComma) {
+    // Only comma. In this app, fmt() produces commas as thousands.
+    // If it has multiple commas, definitely thousands.
+    const commaCount = (s.match(/,/g) || []).length;
+    if (commaCount > 1) return parseFloat(s.replace(/,/g, ''));
+    
+    // If only one comma, check if it's like "1,000" or "1,5"
+    const parts = s.split(',');
+    if (parts[1].length === 3) {
+      // Most likely thousands (1,000)
+      return parseFloat(s.replace(/,/g, ''));
+    }
+    // Most likely decimal (1,5)
+    return parseFloat(s.replace(/,/g, '.'));
+  }
+
+  if (hasDot) {
+    // Only dot.
+    const dotCount = (s.match(/\./g) || []).length;
+    if (dotCount > 1) return parseFloat(s.replace(/\./g, ''));
+    
+    const parts = s.split('.');
+    if (parts[1].length === 3) {
+      // Could be thousands (1.000)
+      return parseFloat(s.replace(/\./g, ''));
+    }
+    return parseFloat(s);
+  }
+
   return parseFloat(s) || 0;
 }
 
