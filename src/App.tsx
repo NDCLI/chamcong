@@ -303,10 +303,11 @@ function App() {
           <div className="input-group">
             <label>Năm:</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={data.year}
               onChange={(e) => updateData({ year: Number(e.target.value) })}
-              style={{ width: '75px' }}
+              style={{ width: '75px', textAlign: 'center' }}
             />
           </div>
           <div className="input-group">
@@ -319,10 +320,11 @@ function App() {
           <div className="input-group">
             <label>NPT:</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={data.dependents}
               onChange={(e) => updateData({ dependents: Number(e.target.value) })}
-              style={{ width: '50px' }}
+              style={{ width: '50px', textAlign: 'center' }}
             />
           </div>
         </div>
