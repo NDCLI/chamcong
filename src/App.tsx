@@ -328,6 +328,15 @@ function App() {
                   )
                 })}
               </tbody>
+              <tfoot className="table-footer">
+                <tr>
+                  <td colSpan={2} style={{ textAlign: 'right', fontWeight: 'bold' }}>Tổng cộng:</td>
+                  <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h150}h</td>
+                  <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h200}h</td>
+                  <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h300}h</td>
+                  <td style={{ fontWeight: 'bold', color: '#d93025' }}>{hLate}h</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
 
@@ -343,7 +352,7 @@ function App() {
 
               <div className="breakdown-card additions">
                 <h3>➕ TĂNG CA/THƯỞNG</h3>
-                <div className="bd-row"><span>Tiền OT ({h150}h|{h200}h|{h300}h):</span> <span>{fmt(s.ovt)} VNĐ</span></div>
+                <div className="bd-row"><span>Tiền OT:</span> <span>{fmt(s.ovt)} VNĐ</span></div>
                 {currentSettings.bonuses.map((bn, idx) => (
                   <div className="bd-row" key={idx}><span>{bn.name}:</span> <span>{fmt(bn.amount)} VNĐ</span></div>
                 ))}
