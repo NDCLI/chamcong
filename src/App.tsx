@@ -230,18 +230,23 @@ function App() {
       hLate += ot[3] || 0;
     });
 
-    const currentSettings = data.settings || {
+    // Safe settings with defaults for old data
+    const currentSettings = {
       bhxh_pct: 8,
       bhyt_pct: 1.5,
       bhtn_pct: 1,
       cong_doan: 47300,
       other_deduction: 0,
-      allowances: [],
-      bonuses: []
+      allowances: [] as Allowance[],
+      bonuses: [] as Allowance[],
+      ...(data.settings || {})
     };
 
-    const allowanceSum = currentSettings.allowances.reduce((acc, curr) => acc + curr.amount, 0);
-    const bonusSum = currentSettings.bonuses.reduce((acc, curr) => acc + curr.amount, 0);
+    const allowances = currentSettings.allowances || [];
+    const bonuses = currentSettings.bonuses || [];
+
+    const allowanceSum = allowances.reduce((acc, curr) => acc + curr.amount, 0);
+    const bonusSum = bonuses.reduce((acc, curr) => acc + curr.amount, 0);
 
     const customConfig = { ...defaultConfig };
     customConfig.rates = {
