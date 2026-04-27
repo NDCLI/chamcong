@@ -58,7 +58,7 @@ const EditableCell = ({ value, onChange }: { value: number | string, onChange: (
 };
 
 // EditableCurrency component to handle formatted currency inputs (like LCB, Other)
-const EditableCurrency = ({ value, onChange, className }: { value: number, onChange: (val: number) => void, className?: string }) => {
+const EditableCurrency = ({ value, onChange, className, style }: { value: number, onChange: (val: number) => void, className?: string, style?: React.CSSProperties }) => {
   const [localValue, setLocalValue] = useState<string>(value ? fmt(value) : '');
 
   useEffect(() => {
@@ -79,6 +79,7 @@ const EditableCurrency = ({ value, onChange, className }: { value: number, onCha
     <input
       type="text"
       className={className}
+      style={style}
       value={localValue}
       onChange={handleChange}
       onBlur={handleBlur}
