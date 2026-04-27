@@ -262,9 +262,10 @@ function App() {
     const todayIso = new Date().toISOString().split('T')[0];
 
     return (
-      <div className="tab-pane">
-        <h2 className="month-header">Tháng {month}</h2>
-        <div className="tab-body">
+      <div className="month-view">
+        <div className="month-header">
+          <h2>Tháng {month}</h2>
+        </div>
 
         <div className="month-content">
           <div className="month-table-container">
@@ -374,7 +375,6 @@ function App() {
           </div>
         </div>
       </div>
-    </div>
     );
   };
 
