@@ -24,6 +24,7 @@ interface AppSettings {
   cong_doan: number;
   other_deduction: number;
   allowances: Allowance[];
+  bonuses: Allowance[];
 }
 
 interface AppData {
@@ -118,7 +119,8 @@ function App() {
         bhtn_pct: 1,
         cong_doan: 47300,
         other_deduction: 0,
-        allowances: []
+        allowances: [],
+        bonuses: []
       }
     };
     for (let m = 1; m <= 12; m++) {
@@ -145,7 +147,7 @@ function App() {
     setData(prev => ({
       ...prev,
       settings: {
-        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, allowances: [] }),
+        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, allowances: [], bonuses: [] }),
         ...updates
       }
     }));
@@ -234,10 +236,12 @@ function App() {
       bhtn_pct: 1,
       cong_doan: 47300,
       other_deduction: 0,
-      allowances: []
+      allowances: [],
+      bonuses: []
     };
 
     const allowanceSum = currentSettings.allowances.reduce((acc, curr) => acc + curr.amount, 0);
+    const bonusSum = currentSettings.bonuses.reduce((acc, curr) => acc + curr.amount, 0);
 
     const customConfig = { ...defaultConfig };
     customConfig.rates = {
@@ -249,7 +253,7 @@ function App() {
       other_deduction: currentSettings.other_deduction
     };
 
-    const s = calc(data.lcb, h150, h200, h300, mData.other, hLate, allowanceSum, month, data.dependents, customConfig);
+    const s = calc(data.lcb, h150, h200, h300, mData.other, hLate, allowanceSum, bonusSum, month, data.dependents, customConfig);
     const todayIso = new Date().toISOString().split('T')[0];
 
     return (
@@ -335,6 +339,9 @@ function App() {
               <div className="breakdown-card additions">
                 <h3>➕ TĂNG CA/THƯỞNG</h3>
                 <div className="bd-row"><span>Tiền OT ({h150}h|{h200}h|{h300}h):</span> <span>{fmt(s.ovt)} VNĐ</span></div>
+                {currentSettings.bonuses.map((bn, idx) => (
+                  <div className="bd-row" key={idx}><span>{bn.name}:</span> <span>{fmt(bn.amount)} VNĐ</span></div>
+                ))}
                 <div className="bd-row" style={{ marginTop: '10px' }}>
                   <span>Khác (VNĐ):</span>
                   <EditableCurrency
@@ -535,6 +542,42 @@ function App() {
                 const newAls = [...(data.settings?.allowances || []), { name: '', amount: 0 }];
                 updateSettings({ allowances: newAls });
               }}>+ Thêm trợ cấp mới</button>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+              <label>Cài đặt Thưởng:</label>
+              {(data.settings?.bonuses || []).map((bn, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Tên thưởng" 
+                    value={bn.name} 
+                    onChange={e => {
+                      const newBns = [...(data.settings?.bonuses || [])];
+                      newBns[idx].name = e.target.value;
+                      updateSettings({ bonuses: newBns });
+                    }}
+                    style={{ flex: 2 }}
+                  />
+                  <EditableCurrency 
+                    value={bn.amount} 
+                    onChange={val => {
+                      const newBns = [...(data.settings?.bonuses || [])];
+                      newBns[idx].amount = val;
+                      updateSettings({ bonuses: newBns });
+                    }} 
+                    style={{ flex: 1 }}
+                  />
+                  <button className="btn btn-danger" style={{ padding: '5px 10px' }} onClick={() => {
+                    const newBns = (data.settings?.bonuses || []).filter((_, i) => i !== idx);
+                    updateSettings({ bonuses: newBns });
+                  }}>✕</button>
+                </div>
+              ))}
+              <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => {
+                const newBns = [...(data.settings?.bonuses || []), { name: '', amount: 0 }];
+                updateSettings({ bonuses: newBns });
+              }}>+ Thêm thưởng mới</button>
             </div>
 
             <div className="modal-actions" style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
