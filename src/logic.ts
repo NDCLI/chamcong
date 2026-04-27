@@ -5,6 +5,7 @@ export interface RatesConfig {
   thuong_he: number;
   cong_doan: number;
   gio_chuan: number;
+  other_deduction?: number;
 }
 
 export interface PitRate {
@@ -137,6 +138,8 @@ export interface CalculationResult {
   ovt: number;
   the: number;
   other: number;
+  other_deduction: number;
+  late_deduction: number;
   total_income: number;
   taxable_income: number;
   pit: number;
@@ -149,6 +152,7 @@ export function calc(
   h200: number,
   h300: number,
   other: number,
+  hLate: number,
   mon: number,
   dependents: number = 0,
   config: Config = defaultConfig
@@ -158,7 +162,9 @@ export function calc(
   const bhyt = Math.floor(lcb * r.bhyt);
   const bhtn = Math.floor(lcb * r.bhtn);
   const cd = r.cong_doan;
-  const tong_bh = bhxh + bhyt + bhtn + cd;
+  const other_deduction = r.other_deduction || 0;
+  const late_deduction = Math.round((lcb / r.gio_chuan) * hLate);
+  const tong_bh = bhxh + bhyt + bhtn + cd + other_deduction + late_deduction;
 
   const ovt = Math.round((lcb / r.gio_chuan) * (h150 * 1.5 + h200 * 2 + h300 * 3));
   const the = [5, 6, 7, 8].includes(mon) ? lcb * r.thuong_he : 0;
@@ -175,6 +181,8 @@ export function calc(
     bhyt,
     bhtn,
     cd,
+    other_deduction,
+    late_deduction,
     tong: tong_bh,
     ovt,
     the,

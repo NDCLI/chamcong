@@ -4,12 +4,20 @@ import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday } from './logic'
 import { syncToCloud, syncFromCloud } from './firebaseSync'
 
 interface MonthOTData {
-  [dateIso: string]: [number, number, number]; // [150, 200, 300]
+  [dateIso: string]: number[]; // [150, 200, 300, late]
 }
 
 interface MonthData {
   other: number;
   ot: MonthOTData;
+}
+
+interface AppSettings {
+  bhxh_pct: number;
+  bhyt_pct: number;
+  bhtn_pct: number;
+  cong_doan: number;
+  other_deduction: number;
 }
 
 interface AppData {
@@ -18,6 +26,7 @@ interface AppData {
   lcb: number;
   dependents: number;
   months: Record<string, MonthData>;
+  settings?: AppSettings;
 }
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
@@ -93,9 +102,16 @@ function App() {
     const initData: AppData = {
       profile_name: "Mặc định",
       year: new Date().getFullYear(),
-      lcb: 7393000,
+      lcb: 0,
       dependents: 0,
-      months: {}
+      months: {},
+      settings: {
+        bhxh_pct: 8,
+        bhyt_pct: 1.5,
+        bhtn_pct: 1,
+        cong_doan: 47300,
+        other_deduction: 0
+      }
     };
     for (let m = 1; m <= 12; m++) {
       initData.months[m] = { other: 0, ot: {} };
@@ -104,6 +120,7 @@ function App() {
   });
 
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [syncCode, setSyncCode] = useState(() => localStorage.getItem('salary_sync_code') || '');
   const [syncStatus, setSyncStatus] = useState('');
 
@@ -116,11 +133,21 @@ function App() {
     setData(prev => ({ ...prev, ...updates }));
   };
 
+  const updateSettings = (updates: Partial<AppSettings>) => {
+    setData(prev => ({
+      ...prev,
+      settings: {
+        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0 }),
+        ...updates
+      }
+    }));
+  };
+
   const updateMonthOT = (month: number, dateIso: string, otIndex: number, value: string) => {
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {} };
-      const currentOT = monthData.ot[dateIso] || [0, 0, 0];
-      const newOT = [...currentOT] as [number, number, number];
+      const currentOT = monthData.ot[dateIso] || [0, 0, 0, 0];
+      const newOT = [...currentOT];
       newOT[otIndex] = pf(value);
 
       return {
@@ -182,17 +209,36 @@ function App() {
     const dates = datesOfMonth(data.year, month);
     const mData = data.months[month] || { other: 0, ot: {} };
 
-    let h150 = 0, h200 = 0, h300 = 0;
+    let h150 = 0, h200 = 0, h300 = 0, hLate = 0;
     // Only sum OT for dates that are actually in this month's range
     dates.forEach(d => {
       const dateIso = d.toISOString().split('T')[0];
-      const ot = mData.ot[dateIso] || [0, 0, 0];
+      const ot = mData.ot[dateIso] || [0, 0, 0, 0];
       h150 += ot[0] || 0;
       h200 += ot[1] || 0;
       h300 += ot[2] || 0;
+      hLate += ot[3] || 0;
     });
 
-    const s = calc(data.lcb, h150, h200, h300, mData.other, month, data.dependents);
+    const currentSettings = data.settings || {
+      bhxh_pct: 8,
+      bhyt_pct: 1.5,
+      bhtn_pct: 1,
+      cong_doan: 47300,
+      other_deduction: 0
+    };
+
+    const customConfig = { ...defaultConfig };
+    customConfig.rates = {
+      ...customConfig.rates,
+      bhxh: currentSettings.bhxh_pct / 100,
+      bhyt: currentSettings.bhyt_pct / 100,
+      bhtn: currentSettings.bhtn_pct / 100,
+      cong_doan: currentSettings.cong_doan,
+      other_deduction: currentSettings.other_deduction
+    };
+
+    const s = calc(data.lcb, h150, h200, h300, mData.other, hLate, month, data.dependents, customConfig);
     const todayIso = new Date().toISOString().split('T')[0];
 
     return (
@@ -211,6 +257,7 @@ function App() {
                   <th>OT 150%</th>
                   <th>OT 200%</th>
                   <th>OT 300%</th>
+                  <th>Muộn/Sớm</th>
                 </tr>
               </thead>
               <tbody>
@@ -218,7 +265,7 @@ function App() {
                   const dateIso = d.toISOString().split('T')[0];
                   const dStr = String(d.getDate()).padStart(2, '0');
                   const wd = WEEKDAYS[d.getDay()];
-                  const ot = mData.ot[dateIso] || [0, 0, 0];
+                  const ot = mData.ot[dateIso] || [0, 0, 0, 0];
 
                   const isHol = isHoliday(d, defaultConfig.holidays);
                   const isWe = d.getDay() === 0 || d.getDay() === 6;
@@ -251,6 +298,12 @@ function App() {
                           onChange={val => updateMonthOT(month, dateIso, 2, val)}
                         />
                       </td>
+                      <td className="editable-cell">
+                        <EditableCell
+                          value={ot[3]}
+                          onChange={val => updateMonthOT(month, dateIso, 3, val)}
+                        />
+                      </td>
                     </tr>
                   )
                 })}
@@ -261,12 +314,11 @@ function App() {
           <div className="breakdown-container">
             <div className="breakdown-cards">
               <div className="breakdown-card additions">
-                <h3>➕ KHOẢN CỘNG</h3>
-                <div className="bd-row"><span>Lương cơ bản:</span> <span>{fmt(data.lcb)} đ</span></div>
-                <div className="bd-row"><span>Tiền OT ({h150}h|{h200}h|{h300}h):</span> <span>{fmt(s.ovt)} đ</span></div>
-                <div className="bd-row"><span>Thưởng hè:</span> <span>{fmt(s.the)} đ</span></div>
+                <h3>➕ THU NHẬP</h3>
+                <div className="bd-row"><span>Tiền OT ({h150}h|{h200}h|{h300}h):</span> <span>{fmt(s.ovt)} VNĐ</span></div>
+                <div className="bd-row"><span>Thưởng hè:</span> <span>{fmt(s.the)} VNĐ</span></div>
                 <div className="bd-row" style={{ marginTop: '10px' }}>
-                  <span>Khác (đ):</span>
+                  <span>Khác (VNĐ):</span>
                   <EditableCurrency
                     value={mData.other}
                     onChange={val => updateMonthOther(month, val)}
@@ -276,17 +328,19 @@ function App() {
               </div>
 
               <div className="breakdown-card deductions">
-                <h3>➖ KHOẢN TRỪ</h3>
-                <div className="bd-row"><span>BHXH (8%):</span> <span>−{fmt(s.bhxh)} đ</span></div>
-                <div className="bd-row"><span>BHYT (1.5%):</span> <span>−{fmt(s.bhyt)} đ</span></div>
-                <div className="bd-row"><span>BHTN (1%):</span> <span>−{fmt(s.bhtn)} đ</span></div>
-                <div className="bd-row"><span>Công đoàn:</span> <span>−{fmt(s.cd)} đ</span></div>
-                <div className="bd-row pit"><span>Thuế TNCN ({data.dependents} NPT):</span> <span>−{fmt(s.pit)} đ</span></div>
+                <h3>➖ KHẤU TRỪ</h3>
+                <div className="bd-row"><span>BHXH ({currentSettings.bhxh_pct}%):</span> <span>−{fmt(s.bhxh)} VNĐ</span></div>
+                <div className="bd-row"><span>BHYT ({currentSettings.bhyt_pct}%):</span> <span>−{fmt(s.bhyt)} VNĐ</span></div>
+                <div className="bd-row"><span>BHTN ({currentSettings.bhtn_pct}%):</span> <span>−{fmt(s.bhtn)} VNĐ</span></div>
+                <div className="bd-row"><span>Công đoàn:</span> <span>−{fmt(s.cd)} VNĐ</span></div>
+                {s.late_deduction > 0 && <div className="bd-row"><span>Đi muộn/về sớm ({hLate}h):</span> <span>−{fmt(s.late_deduction)} VNĐ</span></div>}
+                {s.other_deduction > 0 && <div className="bd-row"><span>Trừ khác:</span> <span>−{fmt(s.other_deduction)} VNĐ</span></div>}
+                <div className="bd-row pit"><span>Thuế TNCN ({data.dependents} NPT):</span> <span>−{fmt(s.pit)} VNĐ</span></div>
               </div>
             </div>
 
             <div className="net-salary">
-              THỰC NHẬN: {fmt(s.net)} đ
+              THỰC NHẬN: {fmt(s.net)} VNĐ
             </div>
           </div>
         </div>
@@ -327,6 +381,7 @@ function App() {
               style={{ width: '50px', textAlign: 'center' }}
             />
           </div>
+          <button className="sync-btn" title="Cài đặt" onClick={() => setShowSettingsModal(true)}>⚙️</button>
         </div>
       </header>
 
@@ -351,12 +406,12 @@ function App() {
           <div className="modal-content">
             <h2>☁️ Đồng bộ Cloud</h2>
             <p className="modal-desc">Nhập Mã đồng bộ bí mật của riêng bạn (ví dụ: LUONG2026). Dùng chung mã này trên các thiết bị khác để tải dữ liệu về.</p>
-            
+
             <div className="form-group">
               <label>Mã đồng bộ (Mật khẩu riêng):</label>
-              <input 
-                type="text" 
-                value={syncCode} 
+              <input
+                type="text"
+                value={syncCode}
                 onChange={e => setSyncCode(e.target.value)}
                 placeholder="VD: LUONG2026"
               />
@@ -368,6 +423,68 @@ function App() {
               <button className="btn btn-primary" onClick={handleUpload}>Tải lên 📤</button>
               <button className="btn btn-secondary" onClick={handleDownload}>Tải về 📥</button>
               <button className="btn btn-danger" onClick={() => setShowSyncModal(false)}>Đóng</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSettingsModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>⚙️ Cài đặt</h2>
+
+            <div className="form-group">
+              <label>BHXH (%):</label>
+              <input
+                type="number"
+                step="0.1"
+                value={data.settings?.bhxh_pct ?? 8}
+                onChange={e => updateSettings({ bhxh_pct: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>BHYT (%):</label>
+              <input
+                type="number"
+                step="0.1"
+                value={data.settings?.bhyt_pct ?? 1.5}
+                onChange={e => updateSettings({ bhyt_pct: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>BHTN (%):</label>
+              <input
+                type="number"
+                step="0.1"
+                value={data.settings?.bhtn_pct ?? 1}
+                onChange={e => updateSettings({ bhtn_pct: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Công đoàn (VNĐ):</label>
+              <EditableCurrency
+                value={data.settings?.cong_doan ?? 47300}
+                onChange={val => updateSettings({ cong_doan: val })}
+                className="other-input"
+                style={{ width: '100%', textAlign: 'left' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Khoản trừ khác (VNĐ):</label>
+              <EditableCurrency
+                value={data.settings?.other_deduction ?? 0}
+                onChange={val => updateSettings({ other_deduction: val })}
+                className="other-input"
+                style={{ width: '100%', textAlign: 'left' }}
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={() => setShowSettingsModal(false)} style={{ marginLeft: 'auto' }}>Xong</button>
             </div>
           </div>
         </div>
