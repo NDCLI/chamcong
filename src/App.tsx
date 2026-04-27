@@ -38,6 +38,13 @@ interface AppData {
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
+const getLocalDateStr = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 // EditableCell component to handle decimal inputs properly
 const EditableCell = ({ value, onChange }: { value: number | string, onChange: (val: string) => void }) => {
   const [localValue, setLocalValue] = useState<string>(value ? String(value) : '');
@@ -222,7 +229,7 @@ function App() {
     let h150 = 0, h200 = 0, h300 = 0, hLate = 0;
     // Only sum OT for dates that are actually in this month's range
     dates.forEach(d => {
-      const dateIso = d.toISOString().split('T')[0];
+      const dateIso = getLocalDateStr(d);
       const ot = mData.ot[dateIso] || [0, 0, 0, 0];
       h150 += ot[0] || 0;
       h200 += ot[1] || 0;
@@ -259,7 +266,7 @@ function App() {
     };
 
     const s = calc(data.lcb, h150, h200, h300, mData.other, hLate, allowanceSum, bonusSum, month, data.dependents, customConfig);
-    const todayIso = new Date().toISOString().split('T')[0];
+    const todayIso = getLocalDateStr(new Date());
 
     return (
       <div className="month-view">
@@ -282,7 +289,7 @@ function App() {
               </thead>
               <tbody>
                 {dates.map(d => {
-                  const dateIso = d.toISOString().split('T')[0];
+                  const dateIso = getLocalDateStr(d);
                   const dStr = String(d.getDate()).padStart(2, '0');
                   const wd = WEEKDAYS[d.getDay()];
                   const ot = mData.ot[dateIso] || [0, 0, 0, 0];
