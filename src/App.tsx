@@ -330,7 +330,7 @@ function App() {
               </tbody>
               <tfoot className="table-footer">
                 <tr>
-                  <td colSpan={2} style={{ textAlign: 'right', fontWeight: 'bold' }}>Giờ:</td>
+                  <td colSpan={2} style={{ textAlign: 'center', fontWeight: 'bold' }}>Giờ:</td>
                   <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h150}h</td>
                   <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h200}h</td>
                   <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h300}h</td>
