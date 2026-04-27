@@ -12,12 +12,18 @@ interface MonthData {
   ot: MonthOTData;
 }
 
+interface Allowance {
+  name: string;
+  amount: number;
+}
+
 interface AppSettings {
   bhxh_pct: number;
   bhyt_pct: number;
   bhtn_pct: number;
   cong_doan: number;
   other_deduction: number;
+  allowances: Allowance[];
 }
 
 interface AppData {
@@ -111,7 +117,8 @@ function App() {
         bhyt_pct: 1.5,
         bhtn_pct: 1,
         cong_doan: 47300,
-        other_deduction: 0
+        other_deduction: 0,
+        allowances: []
       }
     };
     for (let m = 1; m <= 12; m++) {
@@ -138,7 +145,7 @@ function App() {
     setData(prev => ({
       ...prev,
       settings: {
-        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0 }),
+        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, allowances: [] }),
         ...updates
       }
     }));
@@ -226,8 +233,11 @@ function App() {
       bhyt_pct: 1.5,
       bhtn_pct: 1,
       cong_doan: 47300,
-      other_deduction: 0
+      other_deduction: 0,
+      allowances: []
     };
+
+    const allowanceSum = currentSettings.allowances.reduce((acc, curr) => acc + curr.amount, 0);
 
     const customConfig = { ...defaultConfig };
     customConfig.rates = {
@@ -239,7 +249,7 @@ function App() {
       other_deduction: currentSettings.other_deduction
     };
 
-    const s = calc(data.lcb, h150, h200, h300, mData.other, hLate, month, data.dependents, customConfig);
+    const s = calc(data.lcb, h150, h200, h300, mData.other, hLate, allowanceSum, month, data.dependents, customConfig);
     const todayIso = new Date().toISOString().split('T')[0];
 
     return (
@@ -314,8 +324,16 @@ function App() {
 
           <div className="breakdown-container">
             <div className="breakdown-cards">
+              <div className="breakdown-card allowances">
+                <h3>➕ TRỢ CẤP</h3>
+                {currentSettings.allowances.map((al, idx) => (
+                  <div className="bd-row" key={idx}><span>{al.name}:</span> <span>{fmt(al.amount)} VNĐ</span></div>
+                ))}
+                {currentSettings.allowances.length === 0 && <div className="bd-row" style={{ color: '#999', fontStyle: 'italic' }}>Chưa có trợ cấp</div>}
+              </div>
+
               <div className="breakdown-card additions">
-                <h3>➕ THU NHẬP</h3>
+                <h3>➕ TĂNG CA/THƯỞNG</h3>
                 <div className="bd-row"><span>Tiền OT ({h150}h|{h200}h|{h300}h):</span> <span>{fmt(s.ovt)} VNĐ</span></div>
                 <div className="bd-row"><span>Thưởng hè:</span> <span>{fmt(s.the)} VNĐ</span></div>
                 <div className="bd-row" style={{ marginTop: '10px' }}>
@@ -476,15 +494,57 @@ function App() {
 
             <div className="form-group">
               <label>Khoản trừ khác (VNĐ):</label>
-              <EditableCurrency
-                value={data.settings?.other_deduction ?? 0}
-                onChange={val => updateSettings({ other_deduction: val })}
+              <EditableCurrency 
+                value={data.settings?.other_deduction ?? 0} 
+                onChange={val => updateSettings({ other_deduction: val })} 
                 className="other-input"
                 style={{ width: '100%', textAlign: 'left' }}
               />
             </div>
 
-            <div className="modal-actions">
+            <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+              <label>Cài đặt Trợ cấp:</label>
+              {(data.settings?.allowances || []).map((al, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Tên trợ cấp" 
+                    value={al.name} 
+                    onChange={e => {
+                      const newAls = [...(data.settings?.allowances || [])];
+                      newAls[idx].name = e.target.value;
+                      updateSettings({ allowances: newAls });
+                    }}
+                    style={{ flex: 2 }}
+                  />
+                  <EditableCurrency 
+                    value={al.amount} 
+                    onChange={val => {
+                      const newAls = [...(data.settings?.allowances || [])];
+                      newAls[idx].amount = val;
+                      updateSettings({ allowances: newAls });
+                    }} 
+                    style={{ flex: 1 }}
+                  />
+                  <button className="btn btn-danger" style={{ padding: '5px 10px' }} onClick={() => {
+                    const newAls = (data.settings?.allowances || []).filter((_, i) => i !== idx);
+                    updateSettings({ allowances: newAls });
+                  }}>✕</button>
+                </div>
+              ))}
+              <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => {
+                const newAls = [...(data.settings?.allowances || []), { name: '', amount: 0 }];
+                updateSettings({ allowances: newAls });
+              }}>+ Thêm trợ cấp mới</button>
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+              <button className="btn btn-danger" style={{ margin: 0 }} onClick={() => {
+                if(window.confirm("Bạn có chắc chắn muốn xóa toàn bộ dữ liệu và đưa về mặc định?")) {
+                  localStorage.removeItem('salary_data');
+                  window.location.reload();
+                }
+              }}>🗑️ Xóa toàn bộ dữ liệu</button>
               <button className="btn btn-primary" onClick={() => setShowSettingsModal(false)} style={{ marginLeft: 'auto' }}>Xong</button>
             </div>
           </div>

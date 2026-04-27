@@ -140,6 +140,7 @@ export interface CalculationResult {
   other: number;
   other_deduction: number;
   late_deduction: number;
+  allowances: number;
   total_income: number;
   taxable_income: number;
   pit: number;
@@ -153,6 +154,7 @@ export function calc(
   h300: number,
   other: number,
   hLate: number,
+  allowanceSum: number,
   mon: number,
   dependents: number = 0,
   config: Config = defaultConfig
@@ -169,7 +171,7 @@ export function calc(
   const ovt = Math.round((lcb / r.gio_chuan) * (h150 * 1.5 + h200 * 2 + h300 * 3));
   const the = [5, 6, 7, 8].includes(mon) ? lcb * r.thuong_he : 0;
   
-  const total = lcb + ovt + other + the;
+  const total = lcb + ovt + other + the + allowanceSum;
   const ded = config.pit_deductions;
   
   const taxable = total - tong_bh - ded.personal - (dependents * ded.dependent);
@@ -187,6 +189,7 @@ export function calc(
     ovt,
     the,
     other,
+    allowances: allowanceSum,
     total_income: total,
     taxable_income: taxable,
     pit,
