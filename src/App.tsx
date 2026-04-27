@@ -46,7 +46,7 @@ const getLocalDateStr = (date: Date) => {
 };
 
 // EditableCell component to handle decimal inputs properly
-const EditableCell = ({ value, onChange }: { value: number | string, onChange: (val: string) => void }) => {
+const EditableCell = ({ value, onChange, rowIndex, colIndex }: { value: number | string, onChange: (val: string) => void, rowIndex: number, colIndex: number }) => {
   const [localValue, setLocalValue] = useState<string>(value ? String(value) : '');
 
   useEffect(() => {
@@ -61,12 +61,31 @@ const EditableCell = ({ value, onChange }: { value: number | string, onChange: (
     onChange(localValue);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const nextRow = rowIndex + 1;
+      const nextInput = document.querySelector(`input[data-row="${nextRow}"][data-col="${colIndex}"]`) as HTMLInputElement;
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    }
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
   return (
     <input
       type="text"
       value={localValue}
       onChange={handleChange}
       onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      onFocus={handleFocus}
+      data-row={rowIndex}
+      data-col={colIndex}
     />
   );
 };
@@ -288,7 +307,7 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {dates.map(d => {
+                {dates.map((d, rIdx) => {
                   const dateIso = getLocalDateStr(d);
                   const dStr = String(d.getDate()).padStart(2, '0');
                   const wd = WEEKDAYS[d.getDay()];
@@ -310,24 +329,32 @@ function App() {
                       <td className="editable-cell">
                         <EditableCell
                           value={ot[0]}
+                          rowIndex={rIdx}
+                          colIndex={0}
                           onChange={val => updateMonthOT(month, dateIso, 0, val)}
                         />
                       </td>
                       <td className="editable-cell">
                         <EditableCell
                           value={ot[1]}
+                          rowIndex={rIdx}
+                          colIndex={1}
                           onChange={val => updateMonthOT(month, dateIso, 1, val)}
                         />
                       </td>
                       <td className="editable-cell">
                         <EditableCell
                           value={ot[2]}
+                          rowIndex={rIdx}
+                          colIndex={2}
                           onChange={val => updateMonthOT(month, dateIso, 2, val)}
                         />
                       </td>
                       <td className="editable-cell">
                         <EditableCell
                           value={ot[3]}
+                          rowIndex={rIdx}
+                          colIndex={3}
                           onChange={val => updateMonthOT(month, dateIso, 3, val)}
                         />
                       </td>
