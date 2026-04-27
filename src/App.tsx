@@ -326,16 +326,15 @@ function App() {
             <div className="breakdown-cards">
               <div className="breakdown-card allowances">
                 <h3>➕ TRỢ CẤP</h3>
+                <div className="bd-row"><span>Thưởng hè:</span> <span>{fmt(s.the)} VNĐ</span></div>
                 {currentSettings.allowances.map((al, idx) => (
                   <div className="bd-row" key={idx}><span>{al.name}:</span> <span>{fmt(al.amount)} VNĐ</span></div>
                 ))}
-                {currentSettings.allowances.length === 0 && <div className="bd-row" style={{ color: '#999', fontStyle: 'italic' }}>Chưa có trợ cấp</div>}
               </div>
 
               <div className="breakdown-card additions">
                 <h3>➕ TĂNG CA/THƯỞNG</h3>
                 <div className="bd-row"><span>Tiền OT ({h150}h|{h200}h|{h300}h):</span> <span>{fmt(s.ovt)} VNĐ</span></div>
-                <div className="bd-row"><span>Thưởng hè:</span> <span>{fmt(s.the)} VNĐ</span></div>
                 <div className="bd-row" style={{ marginTop: '10px' }}>
                   <span>Khác (VNĐ):</span>
                   <EditableCurrency
@@ -539,12 +538,6 @@ function App() {
             </div>
 
             <div className="modal-actions" style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-              <button className="btn btn-danger" style={{ margin: 0 }} onClick={() => {
-                if(window.confirm("Bạn có chắc chắn muốn xóa toàn bộ dữ liệu và đưa về mặc định?")) {
-                  localStorage.removeItem('salary_data');
-                  window.location.reload();
-                }
-              }}>🗑️ Xóa toàn bộ dữ liệu</button>
               <button className="btn btn-primary" onClick={() => setShowSettingsModal(false)} style={{ marginLeft: 'auto' }}>Xong</button>
             </div>
           </div>
