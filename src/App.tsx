@@ -364,7 +364,7 @@ function App() {
               </tbody>
               <tfoot className="table-footer">
                 <tr>
-                  <td colSpan={2} style={{ textAlign: 'center', fontWeight: 'bold' }}>Giờ:</td>
+                  <td colSpan={2} style={{ textAlign: 'center', fontWeight: 'bold' }}>Giờ</td>
                   <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h150}h</td>
                   <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h200}h</td>
                   <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h300}h</td>
@@ -465,7 +465,7 @@ function App() {
             className={`tab ${activeTab === i + 1 ? 'active' : ''}`}
             onClick={() => setActiveTab(i + 1)}
           >
-            T{i + 1}
+            Th{i + 1}
           </div>
         ))}
       </div>
@@ -548,9 +548,9 @@ function App() {
 
             <div className="form-group">
               <label>Khoản trừ khác (VNĐ):</label>
-              <EditableCurrency 
-                value={data.settings?.other_deduction ?? 0} 
-                onChange={val => updateSettings({ other_deduction: val })} 
+              <EditableCurrency
+                value={data.settings?.other_deduction ?? 0}
+                onChange={val => updateSettings({ other_deduction: val })}
                 className="other-input"
                 style={{ width: '100%', textAlign: 'left' }}
               />
@@ -560,10 +560,10 @@ function App() {
               <label>Trợ cấp:</label>
               {(data.settings?.allowances || []).map((al, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Tên trợ cấp" 
-                    value={al.name} 
+                  <input
+                    type="text"
+                    placeholder="Tên trợ cấp"
+                    value={al.name}
                     onChange={e => {
                       const newAls = [...(data.settings?.allowances || [])];
                       newAls[idx].name = e.target.value;
@@ -571,13 +571,13 @@ function App() {
                     }}
                     style={{ flex: 2 }}
                   />
-                  <EditableCurrency 
-                    value={al.amount} 
+                  <EditableCurrency
+                    value={al.amount}
                     onChange={val => {
                       const newAls = [...(data.settings?.allowances || [])];
                       newAls[idx].amount = val;
                       updateSettings({ allowances: newAls });
-                    }} 
+                    }}
                     style={{ flex: 1 }}
                   />
                   <button className="btn btn-danger" style={{ padding: '5px 10px' }} onClick={() => {
@@ -596,10 +596,10 @@ function App() {
               <label>Thưởng:</label>
               {(data.settings?.bonuses || []).map((bn, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Tên thưởng" 
-                    value={bn.name} 
+                  <input
+                    type="text"
+                    placeholder="Tên thưởng"
+                    value={bn.name}
                     onChange={e => {
                       const newBns = [...(data.settings?.bonuses || [])];
                       newBns[idx].name = e.target.value;
@@ -607,13 +607,13 @@ function App() {
                     }}
                     style={{ flex: 2 }}
                   />
-                  <EditableCurrency 
-                    value={bn.amount} 
+                  <EditableCurrency
+                    value={bn.amount}
                     onChange={val => {
                       const newBns = [...(data.settings?.bonuses || [])];
                       newBns[idx].amount = val;
                       updateSettings({ bonuses: newBns });
-                    }} 
+                    }}
                     style={{ flex: 1 }}
                   />
                   <button className="btn btn-danger" style={{ padding: '5px 10px' }} onClick={() => {
