@@ -509,7 +509,7 @@ function App() {
             </div>
 
             <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-              <label>Cài đặt Trợ cấp:</label>
+              <label>Trợ cấp:</label>
               {(data.settings?.allowances || []).map((al, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
                   <input 
@@ -545,7 +545,7 @@ function App() {
             </div>
 
             <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-              <label>Cài đặt Thưởng:</label>
+              <label>Thưởng:</label>
               {(data.settings?.bonuses || []).map((bn, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
                   <input 
