@@ -1,8 +1,32 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Component, type ReactNode } from 'react'
 import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday } from './logic'
 import { syncToCloud, syncFromCloud } from './firebaseSync'
 import { Analytics } from "@vercel/analytics/react"
+import Lottie from 'lottie-react'
+import animationData from './assets/cloud-sync.json'
+
+class LottieErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('Lottie render error:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <span className="sync-fallback">☁️</span>;
+    }
+    return this.props.children;
+  }
+}
 
 interface MonthOTData {
   [dateIso: string]: number[]; // [150, 200, 300, late]
@@ -556,13 +580,15 @@ function App() {
         <h1 className="header-title">💰 Bảng chấm công</h1>
         <div className="header-controls">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button className="sync-btn" onClick={() => setShowSyncModal(true)} style={{ padding: '6px 12px', fontSize: '0.9rem' }}>☁️ Đồng bộ</button>
-            <span className={`sync-indicator ${syncStatus.includes('✅') ? 'synced' : syncStatus.includes('❌') ? 'error' : syncStatus.includes('Đang') ? 'syncing' : ''}`} title={syncStatus || 'Chưa đồng bộ'}>
-              {syncStatus.includes('Đang') && '⟳'}
-              {syncStatus.includes('✅') && '✓'}
-              {syncStatus.includes('❌') && '✕'}
-              {!syncStatus && '○'}
-            </span>
+            <button className="sync-btn" onClick={() => setShowSyncModal(true)}>
+              <span className="sync-btn-icon" aria-hidden="true">☁️</span>
+              Đồng bộ
+            </button>
+            {(syncStatus.includes('Đang') || syncStatus.includes('❌')) && (
+              <span className={`sync-indicator ${syncStatus.includes('❌') ? 'error' : 'syncing'}`} title={syncStatus}>
+                {syncStatus.includes('Đang') ? '☁️' : '✕'}
+              </span>
+            )}
           </div>
           <div className="input-group">
             <label>Năm:</label>
@@ -631,7 +657,21 @@ function App() {
               Nếu bạn chỉ muốn lấy dữ liệu từ thiết bị khác, hãy dùng "Tải về".
             </div>
 
-            {syncStatus && <div className="sync-status">{syncStatus}</div>}
+            {syncStatus && (
+              <div className="sync-status">
+                {syncStatus.includes('Đang') ? (
+                  <div className="sync-lottie-wrapper">
+                    <LottieErrorBoundary>
+                      <Lottie animationData={animationData} loop={true} style={{ width: 56, height: 56 }} />
+                    </LottieErrorBoundary>
+                  </div>
+                ) : syncStatus.includes('✅') ? (
+                  <div className="sync-success-icon">✅</div>
+                ) : syncStatus.includes('❌') ? (
+                  <div>{syncStatus}</div>
+                ) : null}
+              </div>
+            )}
 
             <div className="modal-actions">
               <button
