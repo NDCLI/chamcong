@@ -443,7 +443,7 @@ function App() {
             <div className="breakdown-cards">
               <div className="breakdown-card allowances">
                 <h3>➕ TRỢ CẤP</h3>
-                <div className="bd-row"><span>Thưởng hè:</span> <span>{fmt(s.the)} VNĐ</span></div>
+                <div className="bd-row"><span>Trợ cấp hè:</span> <span>{fmt(s.the)} VNĐ</span></div>
                 {currentSettings.allowances.map((al, idx) => (
                   <div className="bd-row" key={idx}><span>{al.name}:</span> <span>{fmt(al.amount)} VNĐ</span></div>
                 ))}
