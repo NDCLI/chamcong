@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday } from './logic'
 import { syncToCloud, syncFromCloud } from './firebaseSync'
@@ -163,6 +163,7 @@ function App() {
   const [syncCode, setSyncCode] = useState(() => localStorage.getItem('salary_sync_code') || '');
   const [syncStatus, setSyncStatus] = useState('');
   const [autoSyncCode, setAutoSyncCode] = useState(() => localStorage.getItem('salary_sync_code') || '');
+  const isUserInputRef = useRef(false);
 
   // Save to localStorage whenever data changes
   useEffect(() => {
@@ -170,46 +171,34 @@ function App() {
   }, [data]);
 
   useEffect(() => {
-    if (!autoSyncCode.trim()) return;
+    if (!autoSyncCode.trim() || !isUserInputRef.current) return;
+
+    setSyncStatus('Đang tự động đồng bộ lên Cloud...');
 
     const timer = setTimeout(async () => {
       try {
         await syncToCloud(autoSyncCode, data);
         setSyncStatus('✅ Đã tự động đồng bộ lên Cloud.');
+        isUserInputRef.current = false;
       } catch (e: any) {
         console.error('Auto sync error:', e);
         setSyncStatus('❌ Tự động đồng bộ thất bại: ' + e.message);
+        isUserInputRef.current = false;
       }
     }, 500);
 
     return () => clearTimeout(timer);
   }, [data, autoSyncCode]);
 
-  useEffect(() => {
-    if (!autoSyncCode.trim()) return;
-
-    const fetchCloud = async () => {
-      try {
-        setSyncStatus('Đang tải dữ liệu từ Cloud...');
-        const cloudData = await syncFromCloud(autoSyncCode);
-        if (cloudData) {
-          setData(cloudData);
-          setSyncStatus('✅ Đã tự động tải dữ liệu từ Cloud.');
-        }
-      } catch (e: any) {
-        console.error('Auto download error:', e);
-        setSyncStatus('❌ Tự động tải dữ liệu thất bại: ' + e.message);
-      }
-    };
-
-    fetchCloud();
-  }, [autoSyncCode]);
-
   const updateData = (updates: Partial<AppData>) => {
+    isUserInputRef.current = true;
+    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
     setData(prev => ({ ...prev, ...updates }));
   };
 
   const updateSettings = (updates: Partial<AppSettings>) => {
+    isUserInputRef.current = true;
+    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
     setData(prev => ({
       ...prev,
       settings: {
@@ -220,6 +209,8 @@ function App() {
   };
 
   const updateMonthOT = (month: number, dateIso: string, otIndex: number, value: string) => {
+    isUserInputRef.current = true;
+    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {} };
       const currentOT = monthData.ot[dateIso] || [0, 0, 0, 0];
@@ -243,6 +234,8 @@ function App() {
   };
 
   const updateMonthOther = (month: number, value: number) => {
+    isUserInputRef.current = true;
+    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [] };
       return {
@@ -256,6 +249,8 @@ function App() {
   };
 
   const updateMonthBonusAmount = (month: number, bonusIndex: number, amount: number) => {
+    isUserInputRef.current = true;
+    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
       const currentAmounts = monthData.bonusAmounts || [];
@@ -272,6 +267,8 @@ function App() {
   };
 
   const addMonthBonus = (month: number) => {
+    isUserInputRef.current = true;
+    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
       const currentBonuses = monthData.bonuses || [];
@@ -286,6 +283,8 @@ function App() {
   };
 
   const updateMonthBonuses = (month: number, bonuses: Allowance[]) => {
+    isUserInputRef.current = true;
+    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
       return {
@@ -556,7 +555,15 @@ function App() {
       <header className="header">
         <h1 className="header-title">💰 Bảng chấm công</h1>
         <div className="header-controls">
-          <button className="sync-btn" onClick={() => setShowSyncModal(true)}>☁️ Đồng bộ</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button className="sync-btn" onClick={() => setShowSyncModal(true)} style={{ padding: '6px 12px', fontSize: '0.9rem' }}>☁️ Đồng bộ</button>
+            <span className={`sync-indicator ${syncStatus.includes('✅') ? 'synced' : syncStatus.includes('❌') ? 'error' : syncStatus.includes('Đang') ? 'syncing' : ''}`} title={syncStatus || 'Chưa đồng bộ'}>
+              {syncStatus.includes('Đang') && '⟳'}
+              {syncStatus.includes('✅') && '✓'}
+              {syncStatus.includes('❌') && '✕'}
+              {!syncStatus && '○'}
+            </span>
+          </div>
           <div className="input-group">
             <label>Năm:</label>
             <input
