@@ -185,6 +185,26 @@ function App() {
     return () => clearTimeout(timer);
   }, [data, autoSyncCode]);
 
+  useEffect(() => {
+    if (!autoSyncCode.trim()) return;
+
+    const fetchCloud = async () => {
+      try {
+        setSyncStatus('Đang tải dữ liệu từ Cloud...');
+        const cloudData = await syncFromCloud(autoSyncCode);
+        if (cloudData) {
+          setData(cloudData);
+          setSyncStatus('✅ Đã tự động tải dữ liệu từ Cloud.');
+        }
+      } catch (e: any) {
+        console.error('Auto download error:', e);
+        setSyncStatus('❌ Tự động tải dữ liệu thất bại: ' + e.message);
+      }
+    };
+
+    fetchCloud();
+  }, [autoSyncCode]);
+
   const updateData = (updates: Partial<AppData>) => {
     setData(prev => ({ ...prev, ...updates }));
   };
