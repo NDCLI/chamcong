@@ -217,6 +217,18 @@ function App() {
   };
 
   const handleUpload = async () => {
+    if (!syncCode.trim()) {
+      setSyncStatus('❌ Vui lòng nhập Mã đồng bộ trước khi tải lên.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Tải lên sẽ ghi đè dữ liệu hiện tại trên Cloud cho mã đồng bộ này. Bạn có chắc muốn tiếp tục?'
+    );
+    if (!confirmed) {
+      return;
+    }
+
     try {
       setSyncStatus('Đang tải lên...');
       localStorage.setItem('salary_sync_code', syncCode);
@@ -228,6 +240,11 @@ function App() {
   };
 
   const handleDownload = async () => {
+    if (!syncCode.trim()) {
+      setSyncStatus('❌ Vui lòng nhập Mã đồng bộ trước khi tải về.');
+      return;
+    }
+
     try {
       setSyncStatus('Đang tải về...');
       localStorage.setItem('salary_sync_code', syncCode);
@@ -490,12 +507,28 @@ function App() {
                 placeholder="VD: LUONG2026"
               />
             </div>
+            <div className="sync-warning">
+              ⚠️ Lưu ý: "Tải lên" sẽ ghi đè dữ liệu hiện tại trên Cloud của mã này.
+              Nếu bạn chỉ muốn lấy dữ liệu từ thiết bị khác, hãy dùng "Tải về".
+            </div>
 
             {syncStatus && <div className="sync-status">{syncStatus}</div>}
 
             <div className="modal-actions">
-              <button className="btn btn-primary" onClick={handleUpload}>Tải lên 📤</button>
-              <button className="btn btn-secondary" onClick={handleDownload}>Tải về 📥</button>
+              <button
+                className="btn btn-primary"
+                onClick={handleUpload}
+                disabled={!syncCode.trim()}
+              >
+                Tải lên (ghi đè) 📤
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={handleDownload}
+                disabled={!syncCode.trim()}
+              >
+                Tải về 📥
+              </button>
               <button className="btn btn-danger" onClick={() => setShowSyncModal(false)}>Đóng</button>
             </div>
           </div>

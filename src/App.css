@@ -26,6 +26,7 @@
 body {
   margin: 0;
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 14px;
   background-color: var(--bg-color);
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
@@ -44,18 +45,18 @@ body {
 .header {
   background-color: var(--card-bg);
   color: var(--text-main);
-  padding: 6px 20px;
+  padding: 6px 14px;
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
   border-bottom: 3px solid var(--primary-color);
 }
 
 .header-title {
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   font-weight: bold;
   margin: 0;
 }
@@ -89,13 +90,13 @@ body {
 }
 
 .input-group input {
-  padding: 6px 12px;
+  padding: 4px 8px;
   border-radius: 6px;
   border: 1px solid var(--border-color);
   background-color: var(--bg-color);
   color: var(--text-main);
-  font-size: 0.85rem;
-  width: 110px;
+  font-size: 0.78rem;
+  width: 100px;
   text-align: center;
   font-weight: 600;
   transition: all 0.2s;
@@ -105,7 +106,7 @@ body {
   background-color: var(--card-bg);
   border-color: var(--primary-color);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(138,180,248,0.3);
+  box-shadow: 0 0 0 2px rgba(138,180,248,0.2);
 }
 
 .tabs {
@@ -116,7 +117,7 @@ body {
 }
 
 .tab {
-  padding: 10px 16px;
+  padding: 8px 12px;
   background-color: #e8edf5;
   color: var(--text-muted);
   border-radius: 8px 8px 0 0;
@@ -126,7 +127,7 @@ body {
   border: 1px solid var(--border-color);
   border-bottom: none;
   white-space: nowrap;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
 }
 
 .tab.active {
@@ -155,22 +156,22 @@ body {
 .data-table th {
   background-color: var(--card-bg);
   color: var(--primary-color);
-  padding: 3px 4px;
+  padding: 2px 3px;
   text-align: center;
   position: sticky;
   top: 0;
   font-weight: 700;
   border: 1px solid var(--border-color);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
 }
 
 .data-table td {
-  padding: 1px 4px;
+  padding: 1px 3px;
   border: 1px solid var(--border-color);
   text-align: center;
-  line-height: 1.1;
-  font-size: 0.75rem;
+  line-height: 1.05;
+  font-size: 0.7rem;
 }
 
 .data-table tr.wk td { background-color: var(--card-bg); }
@@ -186,13 +187,13 @@ body {
 
 .editable-cell input {
   width: 100%;
-  padding: 0px 2px;
+  padding: 0px 1px;
   border: 1px solid transparent;
   text-align: center;
   background-color: transparent;
   border-radius: 4px;
   color: var(--text-main);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-family: inherit;
   font-weight: 500;
 }
@@ -206,11 +207,11 @@ body {
 /* Month view */
 .month-view h2 {
   margin-top: 0;
-  padding: 8px 15px;
+  padding: 6px 10px;
   background-color: #f0f4ff;
   border-bottom: 2px solid var(--primary-color);
   color: var(--primary-color);
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: bold;
   border-radius: 4px 4px 0 0;
 }
@@ -219,7 +220,7 @@ body {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 20px;
+  gap: 12px;
 }
 
 .month-table-container {
@@ -229,15 +230,15 @@ body {
 }
 
 .month-table-container table {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
 }
 
 .breakdown-container {
-  flex: 2;
+  flex: 1.8;
   background-color: var(--bg-color);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 10px 15px;
+  padding: 8px 10px;
   position: sticky;
   top: 10px;
 }
@@ -404,4 +405,20 @@ body {
   border-radius: 4px;
   text-align: center;
   font-weight: bold;
+}
+
+.sync-warning {
+  margin: 10px 0 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: #fff4e5;
+  border: 1px solid #f5c46d;
+  color: #7a4b00;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
