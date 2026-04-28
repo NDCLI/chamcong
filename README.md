@@ -1,73 +1,40 @@
-# React + TypeScript + Vite
+# Web App Lương
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Đây là web app quản lý thông tin lương và công việc, được xây dựng bằng React, TypeScript và Vite.
 
-Currently, two official plugins are available:
+## Tính năng chính
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Xem tổng quan lương, thu nhập và các khoản thu/chi.
+- Theo dõi lịch sử thay đổi lương và dữ liệu cá nhân.
+- Giao diện đơn giản, dễ sử dụng trên cả máy tính và thiết bị di động.
+- Tối ưu hiệu năng với React và Vite để tải trang nhanh.
 
-## React Compiler
+## Mục đích
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Ứng dụng hướng tới người dùng cần quản lý chi tiết lương và thu nhập, giúp theo dõi nhanh tình hình tài chính cá nhân.
 
-## Expanding the ESLint configuration
+## Triển khai
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Ứng dụng đã được triển khai trực tuyến tại địa chỉ:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+https://ccong.vercel.app
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Hướng dẫn chạy local
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Cài đặt các gói:
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Chạy ứng dụng:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+3. Mở trình duyệt và truy cập `http://localhost:5173`.
+
+## Liên hệ
+
+Nếu cần hỗ trợ hoặc muốn mở rộng tính năng, bạn có thể cập nhật trực tiếp code trong thư mục `src`.
