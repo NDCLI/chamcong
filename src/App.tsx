@@ -162,11 +162,28 @@ function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [syncCode, setSyncCode] = useState(() => localStorage.getItem('salary_sync_code') || '');
   const [syncStatus, setSyncStatus] = useState('');
+  const [autoSyncCode, setAutoSyncCode] = useState(() => localStorage.getItem('salary_sync_code') || '');
 
   // Save to localStorage whenever data changes
   useEffect(() => {
     localStorage.setItem('salary_data', JSON.stringify(data));
   }, [data]);
+
+  useEffect(() => {
+    if (!autoSyncCode.trim()) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await syncToCloud(autoSyncCode, data);
+        setSyncStatus('✅ Đã tự động đồng bộ lên Cloud.');
+      } catch (e: any) {
+        console.error('Auto sync error:', e);
+        setSyncStatus('❌ Tự động đồng bộ thất bại: ' + e.message);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [data, autoSyncCode]);
 
   const updateData = (updates: Partial<AppData>) => {
     setData(prev => ({ ...prev, ...updates }));
@@ -278,7 +295,8 @@ function App() {
       setSyncStatus('Đang tải lên...');
       localStorage.setItem('salary_sync_code', syncCode);
       await syncToCloud(syncCode, data);
-      setSyncStatus('✅ Đã lưu lên Cloud thành công!');
+      setAutoSyncCode(syncCode.trim());
+      setSyncStatus('✅ Đã lưu lên Cloud thành công! Tự động đồng bộ đã bật.');
     } catch (e: any) {
       setSyncStatus('❌ Lỗi: ' + e.message);
     }
@@ -296,7 +314,8 @@ function App() {
       const cloudData = await syncFromCloud(syncCode);
       if (cloudData) {
         setData(cloudData);
-        setSyncStatus('✅ Tải về thành công!');
+        setAutoSyncCode(syncCode.trim());
+        setSyncStatus('✅ Tải về thành công! Tự động đồng bộ đã bật.');
       }
     } catch (e: any) {
       setSyncStatus('❌ Lỗi: ' + e.message);
@@ -443,7 +462,7 @@ function App() {
             <div className="breakdown-cards">
               <div className="breakdown-card allowances">
                 <h3>➕ TRỢ CẤP</h3>
-                <div className="bd-row"><span>Trợ cấp hè:</span> <span>{fmt(s.the)} VNĐ</span></div>
+                <div className="bd-row"><span>Thưởng hè:</span> <span>{fmt(s.the)} VNĐ</span></div>
                 {currentSettings.allowances.map((al, idx) => (
                   <div className="bd-row" key={idx}><span>{al.name}:</span> <span>{fmt(al.amount)} VNĐ</span></div>
                 ))}
