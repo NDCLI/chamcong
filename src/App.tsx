@@ -11,6 +11,8 @@ interface MonthOTData {
 interface MonthData {
   other: number;
   ot: MonthOTData;
+  bonusAmounts?: number[];
+  bonuses?: Allowance[];
 }
 
 interface Allowance {
@@ -151,7 +153,7 @@ function App() {
       }
     };
     for (let m = 1; m <= 12; m++) {
-      initData.months[m] = { other: 0, ot: {} };
+      initData.months[m] = { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
     }
     return initData;
   });
@@ -205,12 +207,55 @@ function App() {
 
   const updateMonthOther = (month: number, value: number) => {
     setData(prev => {
-      const monthData = prev.months[month] || { other: 0, ot: {} };
+      const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [] };
       return {
         ...prev,
         months: {
           ...prev.months,
           [month]: { ...monthData, other: value }
+        }
+      };
+    });
+  };
+
+  const updateMonthBonusAmount = (month: number, bonusIndex: number, amount: number) => {
+    setData(prev => {
+      const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
+      const currentAmounts = monthData.bonusAmounts || [];
+      const newAmounts = [...currentAmounts];
+      newAmounts[bonusIndex] = amount;
+      return {
+        ...prev,
+        months: {
+          ...prev.months,
+          [month]: { ...monthData, bonusAmounts: newAmounts }
+        }
+      };
+    });
+  };
+
+  const addMonthBonus = (month: number) => {
+    setData(prev => {
+      const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
+      const currentBonuses = monthData.bonuses || [];
+      return {
+        ...prev,
+        months: {
+          ...prev.months,
+          [month]: { ...monthData, bonuses: [...currentBonuses, { name: '', amount: 0 }] }
+        }
+      };
+    });
+  };
+
+  const updateMonthBonuses = (month: number, bonuses: Allowance[]) => {
+    setData(prev => {
+      const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
+      return {
+        ...prev,
+        months: {
+          ...prev.months,
+          [month]: { ...monthData, bonuses }
         }
       };
     });
@@ -261,7 +306,7 @@ function App() {
   // Render Month Tab
   const renderMonthTab = (month: number) => {
     const dates = datesOfMonth(data.year, month);
-    const mData = data.months[month] || { other: 0, ot: {} };
+    const mData = data.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
 
     let h150 = 0, h200 = 0, h300 = 0, hLate = 0;
     // Only sum OT for dates that are actually in this month's range
@@ -287,10 +332,12 @@ function App() {
     };
 
     const allowances = currentSettings.allowances || [];
-    const bonuses = currentSettings.bonuses || [];
+    const settingsBonuses = currentSettings.bonuses || [];
+    const bonusAmounts = mData.bonusAmounts || [];
+    const monthBonuses = mData.bonuses || [];
 
     const allowanceSum = allowances.reduce((acc, curr) => acc + curr.amount, 0);
-    const bonusSum = bonuses.reduce((acc, curr) => acc + curr.amount, 0);
+    const bonusSum = settingsBonuses.reduce((acc, curr, idx) => acc + (bonusAmounts[idx] ?? curr.amount), 0) + monthBonuses.reduce((acc, curr) => acc + curr.amount, 0);
 
     const customConfig = { ...defaultConfig };
     customConfig.rates = {
@@ -405,8 +452,34 @@ function App() {
               <div className="breakdown-card additions">
                 <h3>➕ TĂNG CA/THƯỞNG</h3>
                 <div className="bd-row"><span>Tiền OT:</span> <span>{fmt(s.ovt)} VNĐ</span></div>
-                {currentSettings.bonuses.map((bn, idx) => (
-                  <div className="bd-row" key={idx}><span>{bn.name}:</span> <span>{fmt(bn.amount)} VNĐ</span></div>
+                {settingsBonuses.map((bn, idx) => {
+                  const monthAmount = bonusAmounts[idx] ?? bn.amount;
+                  return (
+                    <div className="bd-row" key={`bonus-${idx}`} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ flex: 1, minWidth: '120px' }}>{bn.name || 'Thưởng'}</span>
+                      <EditableCurrency
+                        value={monthAmount}
+                        onChange={val => updateMonthBonusAmount(month, idx, val)}
+                        className="other-input"
+                        style={{ width: '120px' }}
+                      />
+                    </div>
+                  );
+                })}
+                {monthBonuses.map((bn, idx) => (
+                  <div className="bd-row bonus-row" key={`month-bonus-${idx}`}>
+                    <span>{bn.name || 'Thưởng tháng'}</span>
+                    <EditableCurrency
+                      value={bn.amount}
+                      onChange={val => {
+                        const newBns = [...monthBonuses];
+                        newBns[idx].amount = val;
+                        updateMonthBonuses(month, newBns);
+                      }}
+                      className="other-input"
+                      style={{ width: '120px' }}
+                    />
+                  </div>
                 ))}
                 <div className="bd-row" style={{ marginTop: '10px' }}>
                   <span>Khác (VNĐ):</span>
@@ -656,10 +729,35 @@ function App() {
                   }}>✕</button>
                 </div>
               ))}
-              <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => {
+              <button className="btn btn-secondary" style={{ width: '100%', marginBottom: '10px' }} onClick={() => {
                 const newBns = [...(data.settings?.bonuses || []), { name: '', amount: 0 }];
                 updateSettings({ bonuses: newBns });
-              }}>+ Thêm thưởng mới</button>
+              }}>+ Thêm thưởng cố định</button>
+              <div style={{ marginTop: '20px' }}>
+                <label>Thưởng tháng {activeTab}:</label>
+                {(data.months[activeTab]?.bonuses || []).map((bn, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+                    <input
+                      type="text"
+                      placeholder="Tên thưởng tháng"
+                      value={bn.name}
+                      onChange={e => {
+                        const newBns = [...(data.months[activeTab]?.bonuses || [])];
+                        newBns[idx].name = e.target.value;
+                        updateMonthBonuses(activeTab, newBns);
+                      }}
+                      style={{ flex: 2 }}
+                    />
+                    <button className="btn btn-danger" style={{ padding: '5px 10px' }} onClick={() => {
+                      const newBns = (data.months[activeTab]?.bonuses || []).filter((_, i) => i !== idx);
+                      updateMonthBonuses(activeTab, newBns);
+                    }}>✕</button>
+                  </div>
+                ))}
+                <button className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }} onClick={() => addMonthBonus(activeTab)}>
+                  + Thêm thưởng tháng {activeTab}
+                </button>
+              </div>
             </div>
 
             <div className="modal-actions" style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
