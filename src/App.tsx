@@ -3,6 +3,7 @@ import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday } from './logic'
 import { syncToCloud, syncFromCloud } from './firebaseSync'
 import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/react"
 
 interface MonthOTData {
   [dateIso: string]: number[]; // [150, 200, 300, late]
@@ -636,6 +637,7 @@ function App() {
         </div>
       )}
       <Analytics />
+      <SpeedInsights />
     </div>
   )
 }
