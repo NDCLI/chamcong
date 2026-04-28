@@ -1,11 +1,10 @@
-# Web App Lương
+# Web App 
 
-Đây là web app quản lý thông tin lương và công việc, được xây dựng bằng React, TypeScript và Vite.
+Đây là web app quản lý thông tin chấm công và tính lương, được xây dựng bằng React, TypeScript và Vite.
 
 ## Tính năng chính
 
-- Xem tổng quan lương, thu nhập và các khoản thu/chi.
-- Theo dõi lịch sử thay đổi lương và dữ liệu cá nhân.
+- Xem tổng quan lương và thu nhập
 - Giao diện đơn giản, dễ sử dụng trên cả máy tính và thiết bị di động.
 - Tối ưu hiệu năng với React và Vite để tải trang nhanh.
 
