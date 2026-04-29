@@ -577,7 +577,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1 className="header-title">💰 Bảng chấm công</h1>
+        <h1 className="header-title">💰 Bảng tính công</h1>
         <div className="header-controls">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button className="sync-btn" onClick={() => setShowSyncModal(true)}>
