@@ -1,0 +1,385 @@
+export interface RatesConfig {
+  bhxh: number;
+  bhyt: number;
+  bhtn: number;
+  thuong_he: number;
+  cong_doan: number;
+  gio_chuan: number;
+  other_deduction?: number;
+}
+
+export interface PitRate {
+  limit: number;
+  rate: number;
+  deduction: number;
+}
+
+export interface PitDeductions {
+  personal: number;
+  dependent: number;
+}
+
+export interface Config {
+  rates: RatesConfig;
+  pit_rates: PitRate[];
+  pit_deductions: PitDeductions;
+  holidays: string[];
+}
+
+export const defaultConfig: Config = {
+  rates: {
+    bhxh: 0.08,
+    bhyt: 0.015,
+    bhtn: 0.01,
+    thuong_he: 0.10,
+    cong_doan: 47300,
+    gio_chuan: 208
+  },
+  pit_rates: [
+    { limit: 10000000, rate: 0.05, deduction: 0 },
+    { limit: 30000000, rate: 0.10, deduction: 500000 },
+    { limit: 60000000, rate: 0.20, deduction: 3500000 },
+    { limit: 100000000, rate: 0.30, deduction: 9500000 },
+    { limit: 999999999999, rate: 0.35, deduction: 14500000 }
+  ],
+  pit_deductions: {
+    personal: 15500000,
+    dependent: 6200000
+  },
+  holidays: [
+    "01-01", "04-30", "05-01", "09-02"
+  ]
+};
+
+export function fmt(v: number): string {
+  if (isNaN(v)) return "0";
+  return Math.round(v).toLocaleString('vi-VN').replace(/\./g, ',');
+}
+
+export function pf(s: string | number): number {
+  if (typeof s === 'number') return s;
+  s = s.trim();
+  if (!s) return 0.0;
+  
+  // if it's like "3,696,500" or "3.696.500"
+  // We need to determine if , or . is the decimal separator.
+  const hasComma = s.includes(',');
+  const hasDot = s.includes('.');
+
+  if (hasComma && hasDot) {
+    // Both exist. The last one is usually the decimal.
+    const commaIdx = s.lastIndexOf(',');
+    const dotIdx = s.lastIndexOf('.');
+    if (commaIdx > dotIdx) {
+      // 1.234,56 -> VN style
+      return parseFloat(s.replace(/\./g, '').replace(/,/g, '.'));
+    } else {
+      // 1,234.56 -> EN style
+      return parseFloat(s.replace(/,/g, ''));
+    }
+  }
+
+  if (hasComma) {
+    // Only comma. In this app, fmt() produces commas as thousands.
+    // If it has multiple commas, definitely thousands.
+    const commaCount = (s.match(/,/g) || []).length;
+    if (commaCount > 1) return parseFloat(s.replace(/,/g, ''));
+    
+    // If only one comma, check if it's like "1,000" or "1,5"
+    const parts = s.split(',');
+    if (parts[1].length === 3) {
+      // Most likely thousands (1,000)
+      return parseFloat(s.replace(/,/g, ''));
+    }
+    // Most likely decimal (1,5)
+    return parseFloat(s.replace(/,/g, '.'));
+  }
+
+  if (hasDot) {
+    // Only dot.
+    const dotCount = (s.match(/\./g) || []).length;
+    if (dotCount > 1) return parseFloat(s.replace(/\./g, ''));
+    
+    const parts = s.split('.');
+    if (parts[1].length === 3) {
+      // Could be thousands (1.000)
+      return parseFloat(s.replace(/\./g, ''));
+    }
+    return parseFloat(s);
+  }
+
+  return parseFloat(s) || 0;
+}
+
+export function isHoliday(date: Date, holidays: string[]): boolean {
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const str = `${m}-${d}`;
+  return holidays.includes(str);
+}
+
+// Tết Nguyên Đán — chỉ các ngày được nghỉ chính thức: mùng 1, 2, 3 (+ ngày bù theo quyết định hàng năm)
+// Danh sách dưới đây theo lịch nghỉ thực tế được Chính phủ công bố mỗi năm
+const TET_DATES: Record<number, string[]> = {
+  2020: ["01-24", "01-25", "01-26", "01-27", "01-28", "01-29"],
+  2021: ["02-10", "02-11", "02-12", "02-13", "02-14", "02-15", "02-16"],
+  2022: ["01-29", "01-31", "02-01", "02-02", "02-03", "02-04", "02-05"],
+  2023: ["01-20", "01-22", "01-23", "01-24", "01-25", "01-26"],
+  2024: ["02-08", "02-09", "02-10", "02-11", "02-12", "02-13", "02-14"],
+  2025: ["01-27", "01-28", "01-29", "01-30", "01-31", "02-01", "02-02"],
+  2026: ["02-16", "02-17", "02-18", "02-19", "02-20", "02-21"],
+  2027: ["02-05", "02-06", "02-07", "02-08", "02-09", "02-10"],
+  2028: ["01-25", "01-26", "01-27", "01-28", "01-29", "01-30"],
+  2029: ["02-12", "02-13", "02-14", "02-15", "02-16", "02-17"],
+  2030: ["02-02", "02-03", "02-04", "02-05", "02-06", "02-07"],
+};
+
+export function isTet(date: Date): boolean {
+  const year = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const str = `${m}-${d}`;
+  const tetDates = TET_DATES[year];
+  if (!tetDates) return false;
+  return tetDates.includes(str);
+}
+
+// ============================================================
+// Lunar calendar conversion (Hồ Ngọc Đức algorithm)
+// ============================================================
+
+function jdFromDate(dd: number, mm: number, yy: number): number {
+  const a = Math.floor((14 - mm) / 12);
+  const y = yy + 4800 - a;
+  const m = mm + 12 * a - 3;
+  let jd = dd + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+  if (jd < 2299161) {
+    jd = dd + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - 32083;
+  }
+  return jd;
+}
+
+function newMoonDay(k: number, timeZone: number): number {
+  const T = k / 1236.85;
+  const T2 = T * T;
+  const T3 = T2 * T;
+  const dr = Math.PI / 180;
+  let Jd1 = 2415020.75933 + 29.53058868 * k + 0.0001178 * T2 - 0.000000155 * T3;
+  Jd1 += 0.00033 * Math.sin((166.56 + 132.87 * T - 0.009173 * T2) * dr);
+  const M = 359.2242 + 29.10535608 * k - 0.0000333 * T2 - 0.00000347 * T3;
+  const Mpr = 306.0253 + 385.81691806 * k + 0.0107306 * T2 + 0.00001236 * T3;
+  const F = 21.2964 + 390.67050646 * k - 0.0016528 * T2 - 0.00000239 * T3;
+  let C1 = (0.1734 - 0.000393 * T) * Math.sin(M * dr) + 0.0021 * Math.sin(2 * dr * M);
+  C1 -= 0.4068 * Math.sin(Mpr * dr) + 0.0161 * Math.sin(dr * 2 * Mpr);
+  C1 -= 0.0004 * Math.sin(dr * 3 * Mpr);
+  C1 += 0.0104 * Math.sin(dr * 2 * F) - 0.0051 * Math.sin(dr * (M + Mpr));
+  C1 -= 0.0074 * Math.sin(dr * (M - Mpr)) + 0.0004 * Math.sin(dr * (2 * F + M));
+  C1 -= 0.0004 * Math.sin(dr * (2 * F - M)) - 0.0006 * Math.sin(dr * (2 * F + Mpr));
+  C1 += 0.0010 * Math.sin(dr * (2 * F - Mpr)) + 0.0005 * Math.sin(dr * (2 * Mpr + M));
+  let deltat: number;
+  if (T < -11) {
+    deltat = 0.001 + 0.000839 * T + 0.0002261 * T2 - 0.00000845 * T3 - 0.000000081 * T * T3;
+  } else {
+    deltat = -0.000278 + 0.000265 * T + 0.000262 * T2;
+  }
+  return Math.floor(Jd1 + C1 - deltat + 0.5 + timeZone / 24);
+}
+
+function sunLongitude(jdn: number, timeZone: number): number {
+  const T = (jdn - 2451545.5 - timeZone / 24) / 36525;
+  const T2 = T * T;
+  const dr = Math.PI / 180;
+  const M = 357.5291 + 35999.0503 * T - 0.0001559 * T2 - 0.00000048 * T * T2;
+  const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T2;
+  let DL = 1.9146 - 0.004817 * T - 0.000014 * T2;
+  DL *= Math.sin(dr * M);
+  DL += 0.019993 - 0.000101 * T;
+  DL *= Math.sin(dr * 2 * M);
+  DL += 0.00029 * Math.sin(dr * 3 * M);
+  let L = L0 + DL;
+  L -= 20.4922 / 3600;
+  L = L * dr;
+  L = L - Math.PI * 2 * Math.floor(L / (Math.PI * 2));
+  return Math.floor(L / Math.PI * 6);
+}
+
+function getLunarMonth11(yy: number, timeZone: number): number {
+  const off = jdFromDate(31, 12, yy) - 2415021;
+  const k = Math.floor(off / 29.530588853);
+  let nm = newMoonDay(k, timeZone);
+  const sunLong = sunLongitude(nm, timeZone);
+  if (sunLong >= 9) nm = newMoonDay(k - 1, timeZone);
+  return nm;
+}
+
+function getLeapMonthOffset(a11: number, timeZone: number): number {
+  const k = Math.floor((a11 - 2415021.076998695) / 29.530588853 + 0.5);
+  let i = 2;
+  let lastArc = sunLongitude(newMoonDay(k + 1, timeZone), timeZone);
+  while (i < 14) {
+    const arc = sunLongitude(newMoonDay(k + i, timeZone), timeZone);
+    if (arc === lastArc) break;
+    lastArc = arc;
+    i++;
+  }
+  return i - 1;
+}
+
+/**
+ * Convert Gregorian date to Lunar date [lunarDay, lunarMonth, lunarYear, isLeap]
+ */
+export function toLunarDate(dd: number, mm: number, yy: number, timeZone = 7): [number, number, number, boolean] {
+  const dayNumber = jdFromDate(dd, mm, yy);
+  const k = Math.floor((dayNumber - 2415021.076998695) / 29.530588853);
+  let monthStart = newMoonDay(k + 1, timeZone);
+  if (monthStart > dayNumber) monthStart = newMoonDay(k, timeZone);
+
+  let a11 = getLunarMonth11(yy, timeZone);
+  let b11 = a11;
+  let lunarYear: number;
+  if (a11 >= monthStart) {
+    lunarYear = yy;
+    a11 = getLunarMonth11(yy - 1, timeZone);
+  } else {
+    lunarYear = yy + 1;
+    b11 = getLunarMonth11(yy + 1, timeZone);
+  }
+
+  const lunarDay = dayNumber - monthStart + 1;
+  const diff = Math.floor((monthStart - a11) / 29);
+  let lunarLeap = false;
+  let lunarMonth = diff + 11;
+
+  if (b11 - a11 > 365) {
+    const leapMonthDiff = getLeapMonthOffset(a11, timeZone);
+    if (diff >= leapMonthDiff) {
+      lunarMonth = diff + 10;
+      if (diff === leapMonthDiff) lunarLeap = true;
+    }
+  }
+  if (lunarMonth > 12) lunarMonth -= 12;
+  if (lunarMonth >= 11 && diff < 4) lunarYear -= 1;
+
+  return [lunarDay, lunarMonth, lunarYear, lunarLeap];
+}
+
+/**
+ * Các ngày lễ âm lịch Việt Nam ĐƯỢC NGHỈ chính thức theo luật lao động:
+ * - Tết Nguyên Đán: 1/1 âm (+ bù trước/sau theo quyết định hàng năm)
+ * - Giỗ Tổ Hùng Vương: 10/3 âm
+ * Mùng 2, 3 Tết đã nằm trong TET_DATES nên không cần lặp lại ở đây.
+ */
+const LUNAR_HOLIDAYS: Array<{ day: number; month: number; name: string }> = [
+  { day: 10, month: 3, name: "Giỗ Tổ Hùng Vương" },
+];
+
+export function isLunarHoliday(date: Date): string | null {
+  const [lunarDay, lunarMonth] = toLunarDate(
+    date.getDate(),
+    date.getMonth() + 1,
+    date.getFullYear()
+  );
+  for (const h of LUNAR_HOLIDAYS) {
+    if (h.day === lunarDay && h.month === lunarMonth) return h.name;
+  }
+  return null;
+}
+
+export function calculatePit(taxableIncome: number, pitRates: PitRate[]): number {
+  if (taxableIncome <= 0) return 0;
+  for (const tier of pitRates) {
+    if (taxableIncome <= tier.limit) {
+      return Math.floor(taxableIncome * tier.rate - tier.deduction);
+    }
+  }
+  return 0;
+}
+
+export interface CalculationResult {
+  lcb: number;
+  bhxh: number;
+  bhyt: number;
+  bhtn: number;
+  cd: number;
+  tong: number;
+  ovt: number;
+  the: number;
+  other: number;
+  other_deduction: number;
+  late_deduction: number;
+  allowances: number;
+  bonuses: number;
+  total_income: number;
+  taxable_income: number;
+  pit: number;
+  net: number;
+}
+
+export function calc(
+  lcb: number,
+  h150: number,
+  h200: number,
+  h300: number,
+  other: number,
+  hLate: number,
+  allowanceSum: number,
+  bonusSum: number,
+  mon: number,
+  dependents: number = 0,
+  config: Config = defaultConfig
+): CalculationResult {
+  const r = config.rates;
+  const bhxh = Math.floor(lcb * r.bhxh);
+  const bhyt = Math.floor(lcb * r.bhyt);
+  const bhtn = Math.floor(lcb * r.bhtn);
+  const cd = r.cong_doan;
+  const other_deduction = r.other_deduction || 0;
+  const late_deduction = Math.round((lcb / r.gio_chuan) * hLate);
+  const tong_bh = bhxh + bhyt + bhtn + cd + other_deduction + late_deduction;
+
+  const ovt = Math.round((lcb / r.gio_chuan) * (h150 * 1.5 + h200 * 2 + h300 * 3));
+  const the = [5, 6, 7, 8].includes(mon) ? lcb * r.thuong_he : 0;
+  
+  const total = lcb + ovt + other + the + allowanceSum + bonusSum;
+  const ded = config.pit_deductions;
+  
+  const taxable = total - tong_bh - ded.personal - (dependents * ded.dependent);
+  const pit = calculatePit(taxable, config.pit_rates);
+  
+  return {
+    lcb,
+    bhxh,
+    bhyt,
+    bhtn,
+    cd,
+    other_deduction,
+    late_deduction,
+    tong: tong_bh,
+    ovt,
+    the,
+    other,
+    allowances: allowanceSum,
+    bonuses: bonusSum,
+    total_income: total,
+    taxable_income: taxable,
+    pit,
+    net: total - tong_bh - pit
+  };
+}
+
+export function datesOfMonth(year: number, month: number): Date[] {
+  const pm = month === 1 ? 12 : month - 1;
+  const py = month === 1 ? year - 1 : year;
+  // let's re-check logic.py:
+  // Let's re-check logic.py:
+  // pm, py = (12, year-1) if month == 1 else (month-1, year)
+  // d, end = date(py, pm, 25), date(year, month, 24)
+  const d = new Date(py, pm - 1, 25);
+  const end = new Date(year, month - 1, 24);
+  const out: Date[] = [];
+  while (d <= end) {
+    out.push(new Date(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}

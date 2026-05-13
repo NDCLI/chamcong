@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Gold Gradient for Coin Outer -->
+    <linearGradient id="goldOuter" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FDE047;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gold Gradient for Coin Inner -->
+    <linearGradient id="goldInner" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FEF08A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F59E0B;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Emerald Gradient for Money Badge -->
+    <linearGradient id="emeraldBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#047857;stop-opacity:1" />
+    </linearGradient>
+
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-opacity="0.25" />
+    </filter>
+  </defs>
+  
+  <g filter="url(#shadow)">
+    <!-- Main Coin / Clock Outer -->
+    <circle cx="236" cy="236" r="210" fill="url(#goldOuter)" />
+    <!-- Coin Inner Rim -->
+    <circle cx="236" cy="236" r="170" fill="url(#goldInner)" />
+    <!-- Inner subtle stroke for depth -->
+    <circle cx="236" cy="236" r="170" fill="none" stroke="#FEF3C7" stroke-width="6" opacity="0.6" />
+    
+    <!-- Coin Engraving dashed line -->
+    <circle cx="236" cy="236" r="150" fill="none" stroke="#B45309" stroke-width="4" stroke-dasharray="8, 8" opacity="0.4" />
+
+    <!-- Clock Ticks -->
+    <g stroke="#B45309" stroke-width="14" stroke-linecap="round" opacity="0.6">
+      <line x1="236" y1="85" x2="236" y2="110" />
+      <line x1="236" y1="362" x2="236" y2="387" />
+      <line x1="85" y1="236" x2="110" y2="236" />
+      <line x1="362" y1="236" x2="387" y2="236" />
+    </g>
+
+    <!-- Clock Hands (representing Time in the Coin) -->
+    <path d="M236 120 L236 236 L310 290" fill="none" stroke="#78350F" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" /> 
+    <!-- Clock Center Dot -->
+    <circle cx="236" cy="236" r="24" fill="#78350F" />
+
+    <!-- Badge Background (Cuts out coin edge) -->
+    <circle cx="410" cy="410" r="102" fill="#ffffff" />
+    <!-- Badge Background (Emerald) -->
+    <circle cx="410" cy="410" r="82" fill="url(#emeraldBg)" />
+    
+    <!-- Dollar Sign -->
+    <path d="M 410 345 L 410 475 M 435 385 C 435 370 425 360 410 360 C 390 360 380 370 380 390 C 380 410 440 410 440 430 C 440 450 425 460 410 460 C 390 460 380 450 380 435" fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

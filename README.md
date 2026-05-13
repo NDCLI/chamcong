@@ -1,0 +1,26 @@
+# Web App 
+
+Đây là web app quản lý thông tin chấm công và tính lương, được xây dựng bằng React, TypeScript và Vite.
+
+## Tính năng chính
+
+- Xem tổng quan lương và thu nhập
+- Giao diện đơn giản, dễ sử dụng trên cả máy tính và thiết bị di động.
+- Tối ưu hiệu năng với React và Vite để tải trang nhanh.
+
+## Mục đích
+
+Ứng dụng hướng tới người dùng cần quản lý chi tiết lương và thu nhập, giúp theo dõi nhanh tình hình tài chính cá nhân.
+
+## Triển khai
+
+Ứng dụng đã được triển khai trực tuyến tại địa chỉ:
+
+https://ccong.vercel.app
+
+## Hướng dẫn chạy local
+
+1. Cài đặt các gói:
+
+```bash
+npm install
