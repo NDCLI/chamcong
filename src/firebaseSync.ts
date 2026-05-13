@@ -9,6 +9,7 @@ import {
   signOut,
   sendEmailVerification,
   sendPasswordResetEmail,
+  updateProfile,
   type User,
 } from 'firebase/auth';
 
@@ -38,8 +39,13 @@ export const auth = getAuth(initFirebase());
 
 export const watchAuthState = (cb: (user: User | null) => void) => onAuthStateChanged(auth, cb);
 
-export const registerWithEmail = (email: string, password: string) =>
-  createUserWithEmailAndPassword(auth, email, password);
+export const registerWithEmail = async (email: string, password: string, displayName?: string) => {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  if (displayName && userCredential.user) {
+    await updateProfile(userCredential.user, { displayName });
+  }
+  return userCredential;
+};
 
 export const loginWithEmail = (email: string, password: string) =>
   signInWithEmailAndPassword(auth, email, password);
@@ -49,6 +55,12 @@ export const logoutUser = () => signOut(auth);
 export const sendVerifyEmail = () => {
   if (!auth.currentUser) throw new Error('Bạn chưa đăng nhập.');
   return sendEmailVerification(auth.currentUser);
+};
+
+export const updateDisplayNameProfile = async (displayName: string) => {
+  if (!auth.currentUser) throw new Error('Bạn chưa đăng nhập.');
+  await updateProfile(auth.currentUser, { displayName });
+  return auth.currentUser;
 };
 
 export const resetPasswordByEmail = (email: string) => sendPasswordResetEmail(auth, email);

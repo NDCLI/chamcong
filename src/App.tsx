@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday } from './logic'
-import { syncToCloud, syncFromCloud, syncAccountToCloud, syncAccountFromCloud, watchAuthState, registerWithEmail, loginWithEmail, logoutUser, sendVerifyEmail, resetPasswordByEmail } from './firebaseSync'
+import { syncToCloud, syncFromCloud, syncAccountToCloud, syncAccountFromCloud, watchAuthState, registerWithEmail, loginWithEmail, logoutUser, sendVerifyEmail, resetPasswordByEmail, updateDisplayNameProfile } from './firebaseSync'
 import { Analytics } from "@vercel/analytics/react"
 
 
@@ -164,6 +164,8 @@ function App() {
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authDisplayName, setAuthDisplayName] = useState('');
+  const [profileDisplayName, setProfileDisplayName] = useState('');
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
 
@@ -180,6 +182,7 @@ function App() {
   useEffect(() => {
     const unsub = watchAuthState((nextUser) => {
       setUser(nextUser);
+      setProfileDisplayName(nextUser?.displayName || '');
       setAuthLoading(false);
     });
     return () => unsub();
@@ -431,7 +434,7 @@ function App() {
 
     try {
       if (authMode === 'register') {
-        await registerWithEmail(authEmail.trim(), authPassword);
+        await registerWithEmail(authEmail.trim(), authPassword, authDisplayName.trim() || undefined);
         await sendVerifyEmail();
         setAuthSuccess('Đã tạo tài khoản. Vui lòng kiểm tra email để xác thực.');
       } else if (authMode === 'forgot') {
@@ -443,6 +446,16 @@ function App() {
       setAuthPassword('');
     } catch (e: unknown) {
       setAuthError((e instanceof Error ? e.message : '') || 'Thao tác xác thực thất bại.');
+    }
+  };
+
+  const handleSaveDisplayName = async () => {
+    try {
+      const updatedUser = await updateDisplayNameProfile(profileDisplayName.trim());
+      setUser({ ...updatedUser });
+      setSyncStatus('✅ Đã cập nhật tên hiển thị.');
+    } catch (e: unknown) {
+      setSyncStatus('❌ Không cập nhật được tên hiển thị: ' + (e instanceof Error ? e.message : 'Lỗi không xác định'));
     }
   };
 
@@ -677,6 +690,18 @@ function App() {
           <div className="modal-content" style={{ width: 'min(460px, 94vw)' }}>
             <h2>{authMode === 'login' ? '🔐 Đăng nhập' : authMode === 'register' ? '📝 Tạo tài khoản riêng' : '🔁 Quên mật khẩu'}</h2>
             <p className="modal-desc">Mỗi tài khoản sẽ có dữ liệu chấm công riêng, tách biệt với người dùng khác.</p>
+            {authMode === 'register' && (
+              <div className="form-group">
+                <label>Tên hiển thị</label>
+                <input
+                  type="text"
+                  value={authDisplayName}
+                  onChange={(e) => setAuthDisplayName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
+                  placeholder="Tên của bạn"
+                />
+              </div>
+            )}
             <div className="form-group">
               <label>Email</label>
               <input
@@ -706,9 +731,9 @@ function App() {
                 {authMode === 'login' ? 'Đăng nhập' : authMode === 'register' ? 'Tạo tài khoản' : 'Gửi email đặt lại'}
               </button>
               <button className="btn btn-secondary" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); setAuthSuccess(''); }}>
-                {authMode === 'login' ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'}
+                {authMode === 'login' ? 'Đăng ký' : 'Đăng nhập'}
               </button>
-              <button className="btn btn-danger" onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); }}>Quên mật khẩu</button>
+              <button className="btn btn-danger" style={{ marginLeft: 0 }} onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); }}>Quên mật khẩu</button>
             </div>
           </div>
         </div>
@@ -721,7 +746,7 @@ function App() {
       <header className="header">
         <h1 className="header-title">💰 Bảng tính công</h1>
         <div className="header-controls">
-          <span className="user-badge" title={user.email || 'Tài khoản'}>👤 {user.email || 'Tài khoản'}</span>
+          <span className="user-badge" title={user.email || 'Tài khoản'}>👤 {user.displayName || user.email || 'Tài khoản'}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button className="sync-btn" onClick={() => setShowSyncModal(true)}>
               <span className="sync-btn-icon" aria-hidden="true">☁️</span>
@@ -837,6 +862,18 @@ function App() {
             <div className="settings-grid">
               {/* CỘT TRÁI: Lương & Khấu trừ */}
               <div className="settings-col">
+                <h3 className="settings-section-title">👤 Tài khoản</h3>
+                <div className="settings-item-row profile-name-row">
+                  <input
+                    type="text"
+                    placeholder="Tên hiển thị"
+                    value={profileDisplayName}
+                    onChange={e => setProfileDisplayName(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button className="btn btn-secondary" onClick={handleSaveDisplayName}>Lưu tên</button>
+                </div>
+
                 <h3 className="settings-section-title">💵 Lương & Khấu trừ</h3>
 
                 <div className="settings-row-2">
