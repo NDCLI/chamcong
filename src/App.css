@@ -46,6 +46,7 @@ body::before {
   margin: 0 auto;
   padding: 4px 10px;
   animation: pageIn .45s ease both;
+  min-height: 100vh; /* Đảm bảo luôn chiếm hết chiều cao màn hình */
 }
 
 @keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -134,18 +135,18 @@ body::before {
   box-shadow: 0 16px 36px rgba(79,70,229,.28);
 }
 
-.tab-content,
-.modal-content,
-.breakdown-container,
-.breakdown-card,
-.month-table-container {
+.tab-content { 
+  border-radius: 16px; 
+  padding: 10px; 
+  min-height: calc(100vh - 98px); /* Thay đổi để co giãn */
+  height: auto; 
+  overflow-y: auto; /* Cho phép cuộn khi cửa sổ thu nhỏ */
   background: var(--glass);
   border: 1px solid rgba(255,255,255,.72);
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
 }
 
-.tab-content { border-radius: 16px; padding: 10px; min-height: 0; height: calc(100vh - 98px); overflow: hidden; }
 .month-view h2 {
   margin: 0 0 7px;
   padding: 7px 11px;
@@ -158,14 +159,33 @@ body::before {
   box-shadow: 0 14px 32px rgba(49,46,129,.22);
 }
 
-.month-content { display: flex; align-items: flex-start; gap: 10px; height: calc(100% - 40px); }
-.month-table-container { flex: 3; overflow: hidden; border-radius: 13px; height: 100%; }
-.breakdown-container { flex: 1.8; position: sticky; top: 6px; border-radius: 15px; padding: 9px; max-height: 100%; }
+.month-content { display: flex; align-items: flex-start; gap: 10px; min-height: 0; }
+.month-table-container { 
+  flex: 3; 
+  overflow: visible; /* Không chặn nội dung bảng */
+  border-radius: 13px; 
+  height: auto; 
+  background: var(--glass);
+  border: 1px solid rgba(255,255,255,.72);
+}
+
+.breakdown-container { 
+  flex: 1.8; 
+  position: sticky; 
+  top: 6px; 
+  border-radius: 15px; 
+  padding: 9px; 
+  height: fit-content; 
+  background: var(--glass);
+  border: 1px solid rgba(255,255,255,.72);
+}
+
 .breakdown-cards { display: flex; flex-direction: column; gap: 8px; margin-bottom: 9px; }
 
-.data-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; overflow: hidden; }
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; }
 .data-table th {
   position: sticky; top: 0;
+  z-index: 2;
   padding: 4px 4px;
   text-align: center;
   color: white;
@@ -175,13 +195,13 @@ body::before {
   background: linear-gradient(135deg, #4f46e5, #7c3aed);
 }
 .data-table td {
-  padding: 2px 3px;
+  padding: 1px 3px;
   border-right: 1px solid rgba(124,58,237,.09);
   border-bottom: 1px solid rgba(124,58,237,.09);
   text-align: center;
   font-size: .64rem;
-  line-height: 1.12;
-  height: 19px;
+  line-height: 1.1;
+  height: 18px; /* Ép nhẹ chiều cao hàng */
   background: rgba(255,255,255,.76);
 }
 .data-table tr:hover td { background: rgba(238,242,255,.95); }
@@ -196,7 +216,7 @@ body::before {
 .editable-cell input:hover { background: transparent !important; box-shadow: none !important; }
 .editable-cell input:focus { background: transparent !important; border-color: #4f46e5; box-shadow: none !important; outline: none; }
 
-.breakdown-card { border-radius: 13px; padding: 9px; transition: .24s ease; }
+.breakdown-card { border-radius: 13px; padding: 9px; transition: .24s ease; background: var(--glass); border: 1px solid rgba(255,255,255,.72); }
 .breakdown-card:hover { transform: translateY(-1px); box-shadow: 0 12px 24px rgba(79,70,229,.12); }
 .breakdown-card h3 { margin: 0 0 6px; font-size: .76rem; font-weight: 900; color: #4f46e5; }
 .bd-row { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 4px; font-size: .68rem; align-items: center; }
@@ -214,11 +234,17 @@ body::before {
   border-radius: 13px;
   color: white;
   background: linear-gradient(135deg, #10b981, #059669);
-  box-shadow: 0 18px 38px rgba(16,185,129,.26);
+  box-shadow: 0 -4px 20px rgba(16,185,129,.26);
+  
+  /* Sửa thành Sticky để luôn hiện ở đáy khi cuộn */
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  margin-top: 10px;
 }
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(17,24,39,.48); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(10px); }
-.modal-content { padding: 26px; border-radius: 22px; width: min(520px, 92vw); color: var(--text-main); animation: modalIn .32s ease both; }
+.modal-content { padding: 26px; border-radius: 22px; width: min(520px, 92vw); color: var(--text-main); animation: modalIn .32s ease both; background: var(--glass); border: 1px solid rgba(255,255,255,.72); }
 @keyframes modalIn { from { opacity: 0; transform: translateY(18px) scale(.98); } to { opacity: 1; transform: none; } }
 .modal-content h2 { margin: 0 0 8px; font-size: 1.3rem; font-weight: 900; color: #4f46e5; }
 .modal-desc { margin-bottom: 18px; color: var(--text-muted); line-height: 1.55; }
@@ -257,8 +283,6 @@ body::before {
 @keyframes pulse { 50% { transform: scale(1.08); box-shadow: 0 0 0 9px rgba(255,255,255,0); } }
 .sync-status { margin-top: 12px; padding: 12px; border-radius: 14px; text-align: center; font-weight: 800; color: #4f46e5; background: rgba(238,242,255,.92); border: 1px solid rgba(124,58,237,.16); }
 .sync-warning { margin: 12px 0 0; padding: 12px; border-radius: 14px; background: rgba(254,243,199,.9); border: 1px solid rgba(245,158,11,.3); color: #92400e; font-size: .86rem; line-height: 1.45; font-weight: 700; }
-.sync-lottie-wrapper { display: flex; justify-content: center; margin-bottom: 12px; }
-.sync-success-icon { font-size: 2rem; animation: modalIn .32s ease both; }
 .sync-spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid rgba(79,70,229,.16); border-top-color: #4f46e5; border-right-color: #7c3aed; animation: spin .8s linear infinite; box-shadow: 0 10px 24px rgba(79,70,229,.18); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -281,9 +305,6 @@ body::before {
 .btn-mini-danger:hover { filter: brightness(1.1); transform: scale(1.05); }
 .btn-add { width: 100%; padding: 8px; border-radius: 11px; font-size: .82rem; margin-top: 2px; }
 
-.profile-name-row { margin-bottom: 10px; }
-.profile-name-row .btn { padding: 8px 12px; border-radius: 11px; white-space: nowrap; }
-
 @media (max-width: 900px) {
   .settings-grid { grid-template-columns: 1fr; }
   .month-content { flex-direction: column; }
@@ -304,16 +325,9 @@ body::before {
   caret-color: #4f46e5;
 }
 
-.form-group input::placeholder,
-.settings-item-row input::placeholder {
-  color: #6b7280 !important;
-  opacity: 1;
-}
-
 .form-group input:focus,
 .form-group textarea:focus,
 .settings-item-row input:focus,
-.settings-item-row .other-input:focus,
 .other-input:focus {
   color: #0f172a !important;
   background: #ffffff !important;
