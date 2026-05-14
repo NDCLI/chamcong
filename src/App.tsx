@@ -520,6 +520,14 @@ function App() {
         <div className="month-content">
           <div className="month-table-container">
             <table className="data-table">
+              <colgroup>
+                <col className="col-day" />
+                <col className="col-weekday" />
+                <col className="col-ot" />
+                <col className="col-ot" />
+                <col className="col-ot" />
+                <col className="col-ot" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Ngày</th>
@@ -589,16 +597,14 @@ function App() {
                     </tr>
                   )
                 })}
-              </tbody>
-              <tfoot className="table-footer">
-                <tr>
-                  <td colSpan={2} style={{ textAlign: 'center', fontWeight: 'bold' }}>Giờ</td>
-                  <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h150}h</td>
-                  <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h200}h</td>
-                  <td style={{ fontWeight: 'bold', color: '#1a73e8' }}>{h300}h</td>
-                  <td style={{ fontWeight: 'bold', color: '#d93025' }}>{hLate}h</td>
+                <tr className="table-footer-row">
+                  <td colSpan={2}>Giờ</td>
+                  <td>{h150}h</td>
+                  <td>{h200}h</td>
+                  <td>{h300}h</td>
+                  <td>{hLate}h</td>
                 </tr>
-              </tfoot>
+              </tbody>
             </table>
           </div>
 
@@ -744,7 +750,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1 className="header-title">💰 Bảng tính công</h1>
+        <h1 className="header-title">📈 Bảng tính lương</h1>
         <div className="header-controls">
           <span className="user-badge" title={user.email || 'Tài khoản'}>👤 {user.displayName || user.email || 'Tài khoản'}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
