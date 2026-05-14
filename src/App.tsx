@@ -133,6 +133,7 @@ const EditableCurrency = ({ value, onChange, className, style }: { value: number
 
 function App() {
   const [activeTab, setActiveTab] = useState<number>(1);
+  const [now, setNow] = useState(new Date());
 
   // App state
   const createDefaultData = (): AppData => {
@@ -186,6 +187,11 @@ function App() {
       setAuthLoading(false);
     });
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -509,6 +515,7 @@ function App() {
     };
 
     const s = calc(data.lcb, h150, h200, h300, mData.other, hLate, allowanceSum, bonusSum, month, data.dependents, customConfig);
+    const totalDeductions = s.bhxh + s.bhyt + s.bhtn + s.cd + s.late_deduction + deductionSum + s.pit;
     const todayIso = getLocalDateStr(new Date());
 
     return (
@@ -624,8 +631,8 @@ function App() {
                 {settingsBonuses.map((bn, idx) => {
                   const monthAmount = bonusAmounts[idx] ?? bn.amount;
                   return (
-                    <div className="bd-row" key={`bonus-${idx}`} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{ flex: 1, minWidth: '120px' }}>{bn.name || 'Thưởng'}</span>
+                    <div className="bd-row" key={`bonus-${idx}`}>
+                      <span>{bn.name || 'Thưởng'}</span>
                       <EditableCurrency
                         value={monthAmount}
                         onChange={val => updateMonthBonusAmount(month, idx, val)}
@@ -662,16 +669,17 @@ function App() {
 
               <div className="breakdown-card deductions">
                 <h3>➖ KHẤU TRỪ</h3>
-                <div className="bd-row"><span>BHXH ({currentSettings.bhxh_pct}%):</span> <span>−{fmt(s.bhxh)} VNĐ</span></div>
-                <div className="bd-row"><span>BHYT ({currentSettings.bhyt_pct}%):</span> <span>−{fmt(s.bhyt)} VNĐ</span></div>
-                <div className="bd-row"><span>BHTN ({currentSettings.bhtn_pct}%):</span> <span>−{fmt(s.bhtn)} VNĐ</span></div>
-                <div className="bd-row"><span>Công đoàn:</span> <span>−{fmt(s.cd)} VNĐ</span></div>
-                {s.late_deduction > 0 && <div className="bd-row"><span>Đi muộn/về sớm ({hLate}h):</span> <span>−{fmt(s.late_deduction)} VNĐ</span></div>}
-                {currentSettings.other_deduction > 0 && <div className="bd-row"><span>Trừ khác:</span> <span>−{fmt(currentSettings.other_deduction)} VNĐ</span></div>}
+                <div className="bd-row"><span>BHXH ({currentSettings.bhxh_pct}%):</span> <span>{fmt(s.bhxh)} VNĐ</span></div>
+                <div className="bd-row"><span>BHYT ({currentSettings.bhyt_pct}%):</span> <span>{fmt(s.bhyt)} VNĐ</span></div>
+                <div className="bd-row"><span>BHTN ({currentSettings.bhtn_pct}%):</span> <span>{fmt(s.bhtn)} VNĐ</span></div>
+                <div className="bd-row"><span>Công đoàn:</span> <span>{fmt(s.cd)} VNĐ</span></div>
+                {s.late_deduction > 0 && <div className="bd-row"><span>Đi muộn/về sớm ({hLate}h):</span> <span>{fmt(s.late_deduction)} VNĐ</span></div>}
+                {currentSettings.other_deduction > 0 && <div className="bd-row"><span>Trừ khác:</span> <span>{fmt(currentSettings.other_deduction)} VNĐ</span></div>}
                 {deductions.map((ded, idx) => (
-                  <div className="bd-row" key={`ded-${idx}`}><span>{ded.name || 'Khoản trừ'}:</span> <span>−{fmt(ded.amount)} VNĐ</span></div>
+                  <div className="bd-row" key={`ded-${idx}`}><span>{ded.name || 'Khoản trừ'}:</span> <span>{fmt(ded.amount)} VNĐ</span></div>
                 ))}
-                <div className="bd-row pit"><span>Thuế TNCN ({data.dependents} NPT):</span> <span>−{fmt(s.pit)} VNĐ</span></div>
+                <div className="bd-row pit"><span>Thuế TNCN:</span> <span>{fmt(s.pit)} VNĐ</span></div>
+                <div className="bd-row deduction-total"><span>Tổng khấu trừ:</span> <span>{fmt(totalDeductions)} VNĐ</span></div>
               </div>
             </div>
 
@@ -799,6 +807,19 @@ function App() {
             Th{i + 1}
           </div>
         ))}
+        <div className="led-ticker" aria-label="Ngày giờ hiện tại">
+          <span>
+            {now.toLocaleString('vi-VN', {
+              weekday: 'long',
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })}
+          </span>
+        </div>
       </div>
 
       <div className="tab-content">
