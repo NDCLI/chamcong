@@ -432,3 +432,14 @@ body::before {
   color: #062d16;
   background: #4ade80;
 }
+.icon-btn,
+.icon-btn * {
+  font-family: "Segoe UI Symbol", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  line-height: 1;
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
