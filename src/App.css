@@ -352,10 +352,11 @@ body::before {
 .btn-secondary { background: linear-gradient(135deg, #4ade80, #22c55e); color: #062d16; box-shadow: 0 12px 26px rgba(74,222,128,.18); }
 .btn-danger { background: linear-gradient(135deg, #fb7185, #e11d48); color: white; margin-left: auto; box-shadow: 0 12px 26px rgba(251,113,133,.2); }
 .sync-btn { min-height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; color: white; background: rgba(17,24,39,.32); border: 1px solid rgba(196,181,253,.22); backdrop-filter: none; box-shadow: none; font-size: .74rem; }
-.icon-btn {
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
