@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
-import { LogOut } from 'lucide-react'
 import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday } from './logic'
 import { syncToCloud, syncFromCloud, syncAccountToCloud, syncAccountFromCloud, watchAuthState, registerWithEmail, loginWithEmail, logoutUser, sendVerifyEmail, resetPasswordByEmail, updateDisplayNameProfile } from './firebaseSync'
