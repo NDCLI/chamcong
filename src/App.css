@@ -443,4 +443,5 @@ body::before {
   width: 16px;
   height: 16px;
   display: block;
+  flex-shrink: 0;
 }
