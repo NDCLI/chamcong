@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
+import { LogOut } from 'lucide-react'
 import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday } from './logic'
 import { syncToCloud, syncFromCloud, syncAccountToCloud, syncAccountFromCloud, watchAuthState, registerWithEmail, loginWithEmail, logoutUser, sendVerifyEmail, resetPasswordByEmail, updateDisplayNameProfile } from './firebaseSync'
@@ -793,7 +794,9 @@ function App() {
             />
           </div>
           <button className="icon-btn" title="Cài đặt" onClick={() => setShowSettingsModal(true)}>⚙️</button>
-          <button className="icon-btn danger" title="Đăng xuất" onClick={() => logoutUser()}>⏻</button>
+          <button className="icon-btn danger" title="Đăng xuất" onClick={() => logoutUser()}>
+  <LogOut size={16} strokeWidth={2.5} />
+</button>
         </div>
       </header>
 
