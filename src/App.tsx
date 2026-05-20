@@ -191,13 +191,42 @@ function App() {
     album: '',
   };
 
+  const [musicStarted, setMusicStarted] = useState(false);
+
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.play().catch(() => {
-        // Một số trình duyệt chặn autoplay khi chưa tương tác.
+    // Thử phát ngay (sẽ fail nếu chưa tương tác)
+    if (audioRef.current && !musicStarted) {
+      audioRef.current.play().then(() => {
+        setMusicStarted(true);
+      }).catch(() => {
+        // Ignored
       });
     }
-  }, []);
+
+    // Đăng ký event để phát khi có tương tác
+    const handleFirstInteraction = () => {
+      if (audioRef.current && !musicStarted) {
+        audioRef.current.play().then(() => {
+          setMusicStarted(true);
+        }).catch(() => {});
+      }
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('touchstart', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+
+    if (!musicStarted) {
+      document.addEventListener('click', handleFirstInteraction);
+      document.addEventListener('touchstart', handleFirstInteraction);
+      document.addEventListener('keydown', handleFirstInteraction);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('touchstart', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+  }, [musicStarted]);
 
   useEffect(() => {
     const unsub = watchAuthState((nextUser) => {
