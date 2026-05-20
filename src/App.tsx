@@ -133,7 +133,6 @@ const EditableCurrency = ({ value, onChange, className, style }: { value: number
 
 function App() {
   const [activeTab, setActiveTab] = useState<number>(1);
-  const [now, setNow] = useState(new Date());
 
   // App state
   const createDefaultData = (): AppData => {
@@ -207,11 +206,6 @@ function App() {
       setAuthLoading(false);
     });
     return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
