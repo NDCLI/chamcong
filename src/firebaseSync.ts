@@ -10,6 +10,9 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   type User,
 } from 'firebase/auth';
 
@@ -64,6 +67,16 @@ export const updateDisplayNameProfile = async (displayName: string) => {
 };
 
 export const resetPasswordByEmail = (email: string) => sendPasswordResetEmail(auth, email);
+
+export const updateUserPassword = async (currentPassword: string, newPassword: string) => {
+  if (!auth.currentUser) throw new Error('Bạn chưa đăng nhập.');
+  const email = auth.currentUser.email;
+  if (!email) throw new Error('Email tài khoản không hợp lệ.');
+  const credential = EmailAuthProvider.credential(email, currentPassword);
+  await reauthenticateWithCredential(auth.currentUser, credential);
+  await updatePassword(auth.currentUser, newPassword);
+  return auth.currentUser;
+};
 
 export const syncToCloud = async (syncCode: string, data: unknown, userId?: string) => {
   const app = initFirebase();

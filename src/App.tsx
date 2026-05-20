@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday } from './logic'
-import { syncToCloud, syncFromCloud, syncAccountToCloud, syncAccountFromCloud, watchAuthState, registerWithEmail, loginWithEmail, logoutUser, sendVerifyEmail, resetPasswordByEmail, updateDisplayNameProfile } from './firebaseSync'
+import { syncToCloud, syncFromCloud, syncAccountToCloud, syncAccountFromCloud, watchAuthState, registerWithEmail, loginWithEmail, logoutUser, sendVerifyEmail, resetPasswordByEmail, updateDisplayNameProfile, updateUserPassword } from './firebaseSync'
 import { Analytics } from "@vercel/analytics/react"
 
 
@@ -167,6 +167,11 @@ function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [authDisplayName, setAuthDisplayName] = useState('');
   const [profileDisplayName, setProfileDisplayName] = useState('');
+  const [passwordCurrent, setPasswordCurrent] = useState('');
+  const [passwordNew, setPasswordNew] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
 
@@ -179,6 +184,21 @@ function App() {
   const [autoSyncCode, setAutoSyncCode] = useState('');
   const isUserInputRef = useRef(false);
   const accountHydratedRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const backgroundMusicUrl = '/music.mp3'; // Đặt file nhạc vào public/music.mp3
+  const backgroundMusicInfo = {
+    title: 'Dạo Bước Hongkong 1999 / 漫步香港1999',
+    artist: 'Bố Lỗ Tích BlueC',
+    album: '',
+  };
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.play().catch(() => {
+        // Một số trình duyệt chặn autoplay khi chưa tương tác.
+      });
+    }
+  }, []);
 
   useEffect(() => {
     const unsub = watchAuthState((nextUser) => {
@@ -462,6 +482,34 @@ function App() {
       setSyncStatus('✅ Đã cập nhật tên hiển thị.');
     } catch (e: unknown) {
       setSyncStatus('❌ Không cập nhật được tên hiển thị: ' + (e instanceof Error ? e.message : 'Lỗi không xác định'));
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!passwordCurrent) {
+      setPasswordError('Vui lòng nhập mật khẩu hiện tại.');
+      return;
+    }
+    if (passwordNew.length < 6) {
+      setPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+      return;
+    }
+    if (passwordNew !== passwordConfirm) {
+      setPasswordError('Mật khẩu mới và xác nhận không khớp.');
+      return;
+    }
+
+    try {
+      await updateUserPassword(passwordCurrent, passwordNew);
+      setPasswordSuccess('✅ Đã đổi mật khẩu thành công.');
+      setPasswordCurrent('');
+      setPasswordNew('');
+      setPasswordConfirm('');
+    } catch (e: unknown) {
+      setPasswordError((e instanceof Error ? e.message : '') || 'Không đổi mật khẩu được.');
     }
   };
 
@@ -757,6 +805,14 @@ function App() {
 
   return (
     <div className="app-container">
+      <audio
+        ref={audioRef}
+        src={backgroundMusicUrl}
+        loop
+        autoPlay
+        preload="auto"
+        style={{ display: 'none' }}
+      />
       <header className="header">
         <h1 className="header-title">📈 Bảng tính lương</h1>
         <div className="header-controls">
@@ -823,17 +879,9 @@ function App() {
             Th{i + 1}
           </div>
         ))}
-        <div className="led-ticker" aria-label="Ngày giờ hiện tại">
+        <div className="led-ticker" aria-label="Thông tin bài hát đang phát">
           <span>
-            {now.toLocaleString('vi-VN', {
-              weekday: 'long',
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            })}
+            Đang phát: {backgroundMusicInfo.title} — {backgroundMusicInfo.artist}
           </span>
         </div>
       </div>
@@ -915,6 +963,40 @@ function App() {
                     style={{ flex: 1 }}
                   />
                   <button className="btn btn-secondary" onClick={handleSaveDisplayName}>Lưu tên</button>
+                </div>
+
+                <div className="settings-section password-section">
+                  <h3 className="settings-section-title">🔑 Đổi mật khẩu</h3>
+                  <div className="settings-item-row">
+                    <input
+                      type="password"
+                      placeholder="Mật khẩu hiện tại"
+                      value={passwordCurrent}
+                      onChange={e => setPasswordCurrent(e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                  </div>
+                  <div className="settings-item-row">
+                    <input
+                      type="password"
+                      placeholder="Mật khẩu mới"
+                      value={passwordNew}
+                      onChange={e => setPasswordNew(e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                  </div>
+                  <div className="settings-item-row">
+                    <input
+                      type="password"
+                      placeholder="Xác nhận mật khẩu mới"
+                      value={passwordConfirm}
+                      onChange={e => setPasswordConfirm(e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                  </div>
+                  {passwordError && <div className="sync-warning">❌ {passwordError}</div>}
+                  {passwordSuccess && <div className="sync-status">{passwordSuccess}</div>}
+                  <button className="btn btn-secondary" onClick={handleChangePassword}>Đổi mật khẩu</button>
                 </div>
 
                 <h3 className="settings-section-title">💵 Lương & Khấu trừ</h3>
