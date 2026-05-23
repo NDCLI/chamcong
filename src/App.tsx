@@ -8,7 +8,7 @@ import {
   TrendingUp, User as UserIcon, Cloud, Settings, LogOut,
   Plus, Minus, CheckCircle, XCircle, AlertTriangle,
   Lock, KeyRound, DollarSign, Gift, CalendarDays,
-  Upload, Download, X, Loader2
+  Upload, Download, X
 } from 'lucide-react'
 
 
@@ -105,6 +105,27 @@ const EditableCell = ({ value, onChange, rowIndex, colIndex }: { value: number |
     />
   );
 };
+
+const SyncLoaderIcon = ({ size = 24, className }: { size?: number; className?: string }) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="hsl(228, 97%, 42%)"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <defs>
+      <linearGradient id="RadialGradient8932">
+        <stop offset="0%" stopColor="currentColor" stopOpacity="1" />
+        <stop offset="100%" stopColor="currentColor" stopOpacity="0.25" />
+      </linearGradient>
+    </defs>
+    <style>{`@keyframes spin8932 { to { transform: rotate(360deg); } } #circle8932 { transform-origin: 50% 50%; stroke: url(#RadialGradient8932); fill: none; animation: spin8932 .5s infinite linear; }`}</style>
+    <circle cx="10" cy="10" r="8" id="circle8932" strokeWidth="2" />
+  </svg>
+);
 
 // EditableCurrency component to handle formatted currency inputs (like LCB, Other)
 const EditableCurrency = ({ value, onChange, className, style }: { value: number, onChange: (val: number) => void, className?: string, style?: React.CSSProperties }) => {
@@ -596,13 +617,11 @@ function App() {
     const s = calc(data.lcb, h150, h200, h300, mData.other, hLate, allowanceSum, bonusSum, month, data.dependents, customConfig);
     const totalDeductions = s.bhxh + s.bhyt + s.bhtn + s.cd + s.late_deduction + deductionSum + s.pit;
     const todayIso = getLocalDateStr(new Date());
+    // Removed per UI cleanup: no per-month summary needed here
+    // Cleaned up month summary variables
 
     return (
       <div className="month-view">
-        <div className="month-header">
-          <h2>Tháng {month}</h2>
-        </div>
-
         <div className="month-content">
           <div className="month-table-container">
             <table className="data-table">
@@ -845,7 +864,16 @@ function App() {
         style={{ display: 'none' }}
       />
       <header className="header">
-        <h1 className="header-title"><TrendingUp size={20} /> Bảng tính lương</h1>
+        <div className="header-left">
+          <div className="header-top">
+            <h1 className="header-title"><TrendingUp size={20} /> Bảng tính lương</h1>
+            <div className="header-month-nav">
+              <button className="month-nav prev" onClick={() => setActiveTab(activeTab === 1 ? 12 : activeTab - 1)} aria-label="Previous month">‹</button>
+              <span className="month-pill">Tháng {activeTab}</span>
+              <button className="month-nav next" onClick={() => setActiveTab(activeTab === 12 ? 1 : activeTab + 1)} aria-label="Next month">›</button>
+            </div>
+          </div>
+        </div>
         <div className="header-controls">
           <span className="user-badge" title={user.email || 'Tài khoản'}><UserIcon size={13} /> {user.displayName || user.email || 'Tài khoản'}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -856,10 +884,15 @@ function App() {
             {(syncStatus.includes('Đang') || syncStatus.includes('❌')) && (
               <span className={`sync-indicator ${syncStatus.includes('❌') ? 'error' : 'syncing'}`} title={syncStatus}>
                 {syncStatus.includes('Đang')
-                  ? <span className="spin" style={{ display: 'inline-flex' }}><Loader2 size={14} /></span>
+                  ? <SyncLoaderIcon size={14} />
                   : <X size={14} />}
               </span>
             )}
+          </div>
+          <div className="led-ticker" aria-label="Thông tin bài hát đang phát">
+            <span>
+              Đang phát: {backgroundMusicInfo.title} — {backgroundMusicInfo.artist}
+            </span>
           </div>
           <div className="input-group">
             <label>Năm:</label>
@@ -888,22 +921,7 @@ function App() {
         </div>
       </header>
 
-      <div className="tabs">
-        {[...Array(12)].map((_, i) => (
-          <div
-            key={i + 1}
-            className={`tab ${activeTab === i + 1 ? 'active' : ''}`}
-            onClick={() => setActiveTab(i + 1)}
-          >
-            Th{i + 1}
-          </div>
-        ))}
-        <div className="led-ticker" aria-label="Thông tin bài hát đang phát">
-          <span>
-            Đang phát: {backgroundMusicInfo.title} — {backgroundMusicInfo.artist}
-          </span>
-        </div>
-      </div>
+      
 
       <div className="tab-content">
         {renderMonthTab(activeTab)}
@@ -933,7 +951,7 @@ function App() {
               <div className="sync-status">
                 {syncStatus.includes('Đang') ? (
                   <div className="sync-lottie-wrapper">
-                    <div className="sync-spinner" aria-hidden="true" />
+                    <SyncLoaderIcon size={44} className="sync-loader-icon" />
                   </div>
                 ) : syncStatus.includes('✅') ? (
                   <div className="sync-success-icon"><CheckCircle size={22} color="#4ade80" /></div>
