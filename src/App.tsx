@@ -4,6 +4,12 @@ import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday } from './logic'
 import { syncToCloud, syncFromCloud, syncAccountToCloud, syncAccountFromCloud, watchAuthState, registerWithEmail, loginWithEmail, logoutUser, sendVerifyEmail, resetPasswordByEmail, updateDisplayNameProfile, updateUserPassword } from './firebaseSync'
 import { Analytics } from "@vercel/analytics/react"
+import {
+  TrendingUp, User as UserIcon, Cloud, Settings, LogOut,
+  Plus, Minus, CheckCircle, XCircle, AlertTriangle,
+  Lock, KeyRound, DollarSign, Gift, CalendarDays,
+  Upload, Download, X, Loader2, ReceiptText, Wallet
+} from 'lucide-react'
 
 
 interface MonthOTData {
@@ -284,10 +290,12 @@ function App() {
     if (!user || !accountHydratedRef.current) return;
     localStorage.setItem(storageDataKey(user.uid), JSON.stringify(data));
 
+    setSyncStatus('Đang tự động đồng bộ...');
+
     const timer = setTimeout(async () => {
       try {
         await syncAccountToCloud(user.uid, data);
-        if (!syncStatus.includes('Đang')) setSyncStatus('✅ Đã tự động đồng bộ theo tài khoản.');
+        setSyncStatus('✅ Đã tự động đồng bộ theo tài khoản.');
       } catch (e) {
         console.error('Account auto sync error:', e);
         setSyncStatus('❌ Tự động đồng bộ tài khoản thất bại.');
@@ -689,7 +697,7 @@ function App() {
           <div className="breakdown-container">
             <div className="breakdown-cards">
               <div className="breakdown-card allowances">
-                <h3>➕ TRỢ CẤP</h3>
+                <h3><Plus size={14} strokeWidth={2.5} /> TRỢ CẤP</h3>
                 <div className="bd-row"><span>Thưởng hè:</span> <span>{fmt(s.the)} VNĐ</span></div>
                 {currentSettings.allowances.map((al, idx) => (
                   <div className="bd-row" key={idx}><span>{al.name}:</span> <span>{fmt(al.amount)} VNĐ</span></div>
@@ -697,7 +705,7 @@ function App() {
               </div>
 
               <div className="breakdown-card additions">
-                <h3>➕ TĂNG CA/THƯỞNG</h3>
+                <h3><Plus size={14} strokeWidth={2.5} /> TĂNG CA/THƯỞNG</h3>
                 <div className="bd-row"><span>Tiền OT:</span> <span>{fmt(s.ovt)} VNĐ</span></div>
                 {settingsBonuses.map((bn, idx) => {
                   const monthAmount = bonusAmounts[idx] ?? bn.amount;
@@ -739,7 +747,7 @@ function App() {
               </div>
 
               <div className="breakdown-card deductions">
-                <h3>➖ KHẤU TRỪ</h3>
+                <h3><Minus size={14} strokeWidth={2.5} /> KHẤU TRỪ</h3>
                 <div className="bd-row"><span>BHXH ({currentSettings.bhxh_pct}%):</span> <span>{fmt(s.bhxh)} VNĐ</span></div>
                 <div className="bd-row"><span>BHYT ({currentSettings.bhyt_pct}%):</span> <span>{fmt(s.bhyt)} VNĐ</span></div>
                 <div className="bd-row"><span>BHTN ({currentSettings.bhtn_pct}%):</span> <span>{fmt(s.bhtn)} VNĐ</span></div>
@@ -773,7 +781,7 @@ function App() {
       <div className="app-container">
         <div className="modal-overlay" style={{ position: 'static', minHeight: '100vh' }}>
           <div className="modal-content" style={{ width: 'min(460px, 94vw)' }}>
-            <h2>{authMode === 'login' ? '🔐 Đăng nhập' : authMode === 'register' ? '📝 Tạo tài khoản riêng' : '🔁 Quên mật khẩu'}</h2>
+            <h2>{authMode === 'login' ? <><Lock size={18} /> Đăng nhập</> : authMode === 'register' ? <><UserIcon size={18} /> Tạo tài khoản riêng</> : <><KeyRound size={18} /> Quên mật khẩu</>}</h2>
             <p className="modal-desc">Mỗi tài khoản sẽ có dữ liệu chấm công riêng, tách biệt với người dùng khác.</p>
             {authMode === 'register' && (
               <div className="form-group">
@@ -809,8 +817,8 @@ function App() {
                 />
               )}
             </div>
-            {authError && <div className="sync-warning">❌ {authError}</div>}
-            {authSuccess && <div className="sync-status">✅ {authSuccess}</div>}
+            {authError && <div className="sync-warning"><XCircle size={14} /> {authError}</div>}
+            {authSuccess && <div className="sync-status"><CheckCircle size={14} /> {authSuccess}</div>}
             <div className="modal-actions">
               <button className="btn btn-primary" onClick={handleAuthSubmit}>
                 {authMode === 'login' ? 'Đăng nhập' : authMode === 'register' ? 'Tạo tài khoản' : 'Gửi email đặt lại'}
@@ -837,17 +845,19 @@ function App() {
         style={{ display: 'none' }}
       />
       <header className="header">
-        <h1 className="header-title">📈 Bảng tính lương</h1>
+        <h1 className="header-title"><TrendingUp size={20} /> Bảng tính lương</h1>
         <div className="header-controls">
-          <span className="user-badge" title={user.email || 'Tài khoản'}>👤 {user.displayName || user.email || 'Tài khoản'}</span>
+          <span className="user-badge" title={user.email || 'Tài khoản'}><UserIcon size={13} /> {user.displayName || user.email || 'Tài khoản'}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button className="sync-btn" onClick={() => setShowSyncModal(true)}>
-              <span className="sync-btn-icon" aria-hidden="true">☁️</span>
+              <Cloud size={14} aria-hidden="true" />
               Đồng bộ
             </button>
             {(syncStatus.includes('Đang') || syncStatus.includes('❌')) && (
               <span className={`sync-indicator ${syncStatus.includes('❌') ? 'error' : 'syncing'}`} title={syncStatus}>
-                {syncStatus.includes('Đang') ? '☁️' : '✕'}
+                {syncStatus.includes('Đang')
+                  ? <span className="spin" style={{ display: 'inline-flex' }}><Loader2 size={14} /></span>
+                  : <X size={14} />}
               </span>
             )}
           </div>
@@ -871,24 +881,10 @@ function App() {
               style={{ width: '50px', textAlign: 'center' }}
             />
           </div>
-          <button className="icon-btn" title="Cài đặt" onClick={() => setShowSettingsModal(true)}>⚙️</button>
+          <button className="icon-btn" title="Cài đặt" onClick={() => setShowSettingsModal(true)}><Settings size={16} /></button>
           <button className="icon-btn danger" title="Đăng xuất" onClick={() => logoutUser()}>
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <polyline points="16 17 21 12 16 7" />
-    <line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
-</button>
+            <LogOut size={16} aria-hidden="true" />
+          </button>
         </div>
       </header>
 
@@ -916,7 +912,7 @@ function App() {
       {showSyncModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h2>☁️ Đồng bộ Cloud</h2>
+            <h2><Cloud size={18} /> Đồng bộ Cloud</h2>
             <p className="modal-desc">Nhập Mã đồng bộ bí mật của riêng bạn (ví dụ: LUONG2026). Dùng chung mã này trên các thiết bị khác để tải dữ liệu về.</p>
 
             <div className="form-group">
@@ -929,7 +925,7 @@ function App() {
               />
             </div>
             <div className="sync-warning">
-              ⚠️ Lưu ý: "Tải lên" sẽ ghi đè dữ liệu hiện tại trên Cloud của mã này.
+              <AlertTriangle size={14} /> Lưu ý: "Tải lên" sẽ ghi đè dữ liệu hiện tại trên Cloud của mã này.
               Nếu bạn chỉ muốn lấy dữ liệu từ thiết bị khác, hãy dùng "Tải về".
             </div>
 
@@ -940,7 +936,7 @@ function App() {
                     <div className="sync-spinner" aria-hidden="true" />
                   </div>
                 ) : syncStatus.includes('✅') ? (
-                  <div className="sync-success-icon">✅</div>
+                  <div className="sync-success-icon"><CheckCircle size={22} color="#4ade80" /></div>
                 ) : syncStatus.includes('❌') ? (
                   <div>{syncStatus}</div>
                 ) : null}
@@ -953,14 +949,14 @@ function App() {
                 onClick={handleUpload}
                 disabled={!syncCode.trim()}
               >
-                Tải lên (ghi đè) 📤
+                <Upload size={14} /> Tải lên (ghi đè)
               </button>
               <button
                 className="btn btn-secondary"
                 onClick={handleDownload}
                 disabled={!syncCode.trim()}
               >
-                Tải về 📥
+                <Download size={14} /> Tải về
               </button>
               <button className="btn btn-danger" onClick={() => setShowSyncModal(false)}>Đóng</button>
             </div>
@@ -971,12 +967,12 @@ function App() {
       {showSettingsModal && (
         <div className="modal-overlay">
           <div className="modal-content settings-modal">
-            <h2>⚙️ Cài đặt</h2>
+            <h2><Settings size={18} /> Cài đặt</h2>
 
             <div className="settings-grid">
               {/* CỘT TRÁI: Lương & Khấu trừ */}
               <div className="settings-col">
-                <h3 className="settings-section-title">👤 Tài khoản</h3>
+                <h3 className="settings-section-title"><UserIcon size={14} /> Tài khoản</h3>
                 <div className="settings-item-row profile-name-row">
                   <input
                     type="text"
@@ -989,7 +985,7 @@ function App() {
                 </div>
 
                 <div className="settings-section password-section">
-                  <h3 className="settings-section-title">🔑 Đổi mật khẩu</h3>
+                  <h3 className="settings-section-title"><KeyRound size={14} /> Đổi mật khẩu</h3>
                   <div className="settings-item-row">
                     <input
                       type="password"
@@ -1017,12 +1013,12 @@ function App() {
                       style={{ flex: 1 }}
                     />
                   </div>
-                  {passwordError && <div className="sync-warning">❌ {passwordError}</div>}
+                  {passwordError && <div className="sync-warning"><XCircle size={14} /> {passwordError}</div>}
                   {passwordSuccess && <div className="sync-status">{passwordSuccess}</div>}
                   <button className="btn btn-secondary" onClick={handleChangePassword}>Đổi mật khẩu</button>
                 </div>
 
-                <h3 className="settings-section-title">💵 Lương & Khấu trừ</h3>
+                <h3 className="settings-section-title"><DollarSign size={14} /> Lương & Khấu trừ</h3>
 
                 <div className="settings-row-2">
                   <div className="form-group compact">
@@ -1076,7 +1072,7 @@ function App() {
                   </div>
                 </div>
 
-                <h3 className="settings-section-title">➖ Khoản trừ khác</h3>
+                <h3 className="settings-section-title"><Minus size={14} /> Khoản trừ khác</h3>
                 <div className="settings-list">
                   {(data.settings?.deductions || []).map((ded, idx) => (
                     <div key={idx} className="settings-item-row">
@@ -1112,7 +1108,7 @@ function App() {
                   updateSettings({ deductions: newDeds });
                 }}>+ Thêm khoản trừ</button>
 
-                <h3 className="settings-section-title">➕ Trợ cấp</h3>
+                <h3 className="settings-section-title"><Plus size={14} /> Trợ cấp</h3>
                 <div className="settings-list">
                   {(data.settings?.allowances || []).map((al, idx) => (
                     <div key={idx} className="settings-item-row">
@@ -1151,7 +1147,7 @@ function App() {
 
               {/* CỘT PHẢI: Thưởng */}
               <div className="settings-col">
-                <h3 className="settings-section-title">🎁 Thưởng cố định</h3>
+                <h3 className="settings-section-title"><Gift size={14} /> Thưởng cố định</h3>
                 <div className="settings-list">
                   {(data.settings?.bonuses || []).map((bn, idx) => (
                     <div key={idx} className="settings-item-row">
@@ -1187,7 +1183,7 @@ function App() {
                   updateSettings({ bonuses: newBns });
                 }}>+ Thêm thưởng cố định</button>
 
-                <h3 className="settings-section-title">📅 Thưởng tháng {activeTab}</h3>
+                <h3 className="settings-section-title"><CalendarDays size={14} /> Thưởng tháng {activeTab}</h3>
                 <div className="settings-list">
                   {(data.months[activeTab]?.bonuses || []).map((bn, idx) => (
                     <div key={idx} className="settings-item-row">

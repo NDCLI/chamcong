@@ -326,9 +326,6 @@ body::before {
   background: linear-gradient(135deg, #4ade80, #22c55e);
   box-shadow: 0 -4px 22px rgba(74,222,128,.24);
   
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
   margin-top: 10px;
 }
 .net-salary span:last-child {
@@ -357,8 +354,6 @@ body::before {
   height: 16px;
   display: block;
   flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
   border-radius: 999px;
   color: white;
   background: rgba(17,24,39,.32);
@@ -372,8 +367,8 @@ body::before {
   border-color: rgba(255,255,255,.14);
 }
 .sync-indicator { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-weight: 900; background: rgba(255,255,255,.12); color: white; border: 1px solid rgba(196,181,253,.28); }
-.sync-indicator.syncing { animation: pulse 1.6s ease infinite; }
-.sync-indicator.error { background: rgba(251,113,133,.18); color: #fff; }
+.sync-indicator.syncing { background: rgba(196,181,253,.15); border-color: rgba(196,181,253,.4); }
+.sync-indicator.error { background: rgba(251,113,133,.18); color: #fecdd3; border-color: rgba(251,113,133,.4); }
 @keyframes pulse { 50% { transform: scale(1.08); box-shadow: 0 0 0 9px rgba(255,255,255,0); } }
 .sync-status { margin-top: 12px; padding: 12px; border-radius: 14px; text-align: center; font-weight: 800; color: #c4b5fd; background: rgba(31,35,44,.92); border: 1px solid rgba(196,181,253,.18); }
 .sync-warning { margin: 12px 0 0; padding: 12px; border-radius: 14px; background: rgba(251,113,133,.14); border: 1px solid rgba(251,113,133,.3); color: #fecdd3; font-size: .86rem; line-height: 1.45; font-weight: 700; }
@@ -433,9 +428,18 @@ body::before {
   color: #062d16;
   background: #4ade80;
 }
+/* Lucide icon alignment */
+h1 svg, h2 svg, h3 svg { vertical-align: middle; margin-right: 5px; flex-shrink: 0; }
+.btn svg, .sync-btn svg { vertical-align: middle; flex-shrink: 0; }
+.sync-warning svg, .sync-status svg { vertical-align: middle; margin-right: 4px; flex-shrink: 0; }
+.user-badge svg { vertical-align: middle; margin-right: 4px; }
+.settings-section-title { display: flex; align-items: center; gap: 5px; }
+
+/* Spin animation for Loader2 */
+.spin { animation: spin .8s linear infinite; }
+
 .icon-btn,
 .icon-btn * {
-  font-family: "Segoe UI Symbol", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   line-height: 1;
 }
 
