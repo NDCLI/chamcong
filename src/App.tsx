@@ -877,17 +877,10 @@ function App() {
         <div className="header-controls">
           <span className="user-badge" title={user.email || 'Tài khoản'}><UserIcon size={13} /> {user.displayName || user.email || 'Tài khoản'}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button className="sync-btn" onClick={() => setShowSyncModal(true)}>
-              <Cloud size={14} aria-hidden="true" />
+            <button className={`sync-btn ${syncStatus.includes('Đang') ? 'syncing' : ''} ${syncStatus.includes('❌') ? 'error' : ''}`} onClick={() => setShowSyncModal(true)} title={syncStatus || 'Đồng bộ'}>
+              {syncStatus.includes('❌') ? <X size={14} aria-hidden="true" /> : <Cloud size={14} aria-hidden="true" />}
               Đồng bộ
             </button>
-            {(syncStatus.includes('Đang') || syncStatus.includes('❌')) && (
-              <span className={`sync-indicator ${syncStatus.includes('❌') ? 'error' : 'syncing'}`} title={syncStatus}>
-                {syncStatus.includes('Đang')
-                  ? <SyncLoaderIcon size={14} />
-                  : <X size={14} />}
-              </span>
-            )}
           </div>
           <div className="led-ticker" aria-label="Thông tin bài hát đang phát">
             <span>

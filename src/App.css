@@ -393,6 +393,8 @@ body::before {
 .btn-secondary { background: linear-gradient(135deg, #4ade80, #22c55e); color: #062d16; box-shadow: 0 12px 26px rgba(74,222,128,.18); }
 .btn-danger { background: linear-gradient(135deg, #fb7185, #e11d48); color: white; margin-left: auto; box-shadow: 0 12px 26px rgba(251,113,133,.2); }
 .sync-btn { min-height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; color: white; background: rgba(17,24,39,.32); border: 1px solid rgba(196,181,253,.22); backdrop-filter: none; box-shadow: none; font-size: .74rem; }
+.sync-btn.syncing svg { animation: cloudPulse .82s ease-in-out infinite; filter: drop-shadow(0 0 7px rgba(196,181,253,.75)); }
+.sync-btn.error { color: #fecdd3; border-color: rgba(251,113,133,.4); background: rgba(251,113,133,.16); }
 .icon-btn svg {
   width: 16px;
   height: 16px;
@@ -410,9 +412,18 @@ body::before {
   background: linear-gradient(135deg, rgba(251,113,133,.9), rgba(225,29,72,.82));
   border-color: rgba(255,255,255,.14);
 }
-.sync-indicator { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-weight: 900; background: rgba(255,255,255,.12); color: white; border: 1px solid rgba(196,181,253,.28); }
-.sync-indicator.syncing { background: rgba(196,181,253,.15); border-color: rgba(196,181,253,.4); }
-.sync-indicator.error { background: rgba(251,113,133,.18); color: #fecdd3; border-color: rgba(251,113,133,.4); }
+@keyframes cloudPulse {
+  0%, 100% { 
+    transform: scale(1); 
+    color: white; 
+    filter: drop-shadow(0 0 2px rgba(196,181,253,.3)); 
+  }
+  50% { 
+    transform: scale(1.25); 
+    color: #a78bfa; 
+    filter: drop-shadow(0 0 12px rgba(167,139,250,.9)) drop-shadow(0 0 4px #c4b5fd); 
+  }
+}
 @keyframes pulse { 50% { transform: scale(1.08); box-shadow: 0 0 0 9px rgba(255,255,255,0); } }
 .sync-status { margin-top: 12px; padding: 12px; border-radius: 14px; text-align: center; font-weight: 800; color: #c4b5fd; background: rgba(31,35,44,.92); border: 1px solid rgba(196,181,253,.18); }
 .sync-warning { margin: 12px 0 0; padding: 12px; border-radius: 14px; background: rgba(251,113,133,.14); border: 1px solid rgba(251,113,133,.3); color: #fecdd3; font-size: .86rem; line-height: 1.45; font-weight: 700; }
