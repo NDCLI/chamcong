@@ -8,7 +8,7 @@ import {
   TrendingUp, User as UserIcon, Cloud, Settings, LogOut,
   Plus, Minus, CheckCircle, XCircle, AlertTriangle,
   Lock, KeyRound, DollarSign, Gift, CalendarDays,
-  Upload, Download, X, Loader2, ReceiptText, Wallet
+  Upload, Download, X, Loader2
 } from 'lucide-react'
 
 
