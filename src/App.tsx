@@ -8,7 +8,7 @@ import {
   TrendingUp, User as UserIcon, Cloud, Settings, LogOut,
   Plus, Minus, CheckCircle, XCircle, AlertTriangle,
   Lock, KeyRound, DollarSign, Gift, CalendarDays,
-  Upload, Download, X
+  Upload, Download, X, ChevronLeft, ChevronRight, ChevronDown
 } from 'lucide-react'
 
 
@@ -160,6 +160,22 @@ const EditableCurrency = ({ value, onChange, className, style }: { value: number
 
 function App() {
   const [activeTab, setActiveTab] = useState<number>(1);
+  const [showMonthDropdown, setShowMonthDropdown] = useState<boolean>(false);
+  const monthNavRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (monthNavRef.current && !monthNavRef.current.contains(event.target as Node)) {
+        setShowMonthDropdown(false);
+      }
+    };
+    if (showMonthDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMonthDropdown]);
 
   // App state
   const createDefaultData = (): AppData => {
@@ -867,10 +883,43 @@ function App() {
         <div className="header-left">
           <div className="header-top">
             <h1 className="header-title"><TrendingUp size={20} /> Bảng tính lương</h1>
-            <div className="header-month-nav">
-              <button className="month-nav prev" onClick={() => setActiveTab(activeTab === 1 ? 12 : activeTab - 1)} aria-label="Previous month">‹</button>
-              <span className="month-pill">Tháng {activeTab}</span>
-              <button className="month-nav next" onClick={() => setActiveTab(activeTab === 12 ? 1 : activeTab + 1)} aria-label="Next month">›</button>
+            <div className="header-month-nav" ref={monthNavRef}>
+              <button className="month-nav prev" onClick={() => { setActiveTab(activeTab === 1 ? 12 : activeTab - 1); setShowMonthDropdown(false); }} aria-label="Previous month">
+                <ChevronLeft size={16} strokeWidth={2.5} />
+              </button>
+              <button 
+                className={`month-pill ${showMonthDropdown ? 'active' : ''}`}
+                onClick={() => setShowMonthDropdown(!showMonthDropdown)}
+                aria-label="Select month"
+              >
+                Tháng {activeTab}
+                <ChevronDown size={12} strokeWidth={3} style={{ marginLeft: '4px', transition: 'transform 0.2s ease', transform: showMonthDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+              </button>
+              <button className="month-nav next" onClick={() => { setActiveTab(activeTab === 12 ? 1 : activeTab + 1); setShowMonthDropdown(false); }} aria-label="Next month">
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </button>
+
+              {showMonthDropdown && (
+                <div className="month-dropdown-menu">
+                  <div className="month-dropdown-grid">
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const m = i + 1;
+                      return (
+                        <button
+                          key={m}
+                          className={`month-dropdown-item ${activeTab === m ? 'selected' : ''}`}
+                          onClick={() => {
+                            setActiveTab(m);
+                            setShowMonthDropdown(false);
+                          }}
+                        >
+                          Tháng {m}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
