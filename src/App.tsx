@@ -162,6 +162,9 @@ function App() {
   const [activeTab, setActiveTab] = useState<number>(1);
   const [showMonthDropdown, setShowMonthDropdown] = useState<boolean>(false);
   const monthNavRef = useRef<HTMLDivElement>(null);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -176,6 +179,20 @@ function App() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showMonthDropdown]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setShowAccountMenu(false);
+      }
+    };
+    if (showAccountMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAccountMenu]);
 
   // App state
   const createDefaultData = (): AppData => {
@@ -924,7 +941,6 @@ function App() {
           </div>
         </div>
         <div className="header-controls">
-          <span className="user-badge" title={user.email || 'Tài khoản'}><UserIcon size={13} /> {user.displayName || user.email || 'Tài khoản'}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button className={`sync-btn ${syncStatus.includes('Đang') ? 'syncing' : ''} ${syncStatus.includes('❌') ? 'error' : ''}`} onClick={() => setShowSyncModal(true)} title={syncStatus || 'Đồng bộ'}>
               {syncStatus.includes('❌') ? <X size={14} aria-hidden="true" /> : <Cloud size={14} aria-hidden="true" />}
@@ -957,9 +973,90 @@ function App() {
             />
           </div>
           <button className="icon-btn" title="Cài đặt" onClick={() => setShowSettingsModal(true)}><Settings size={16} /></button>
-          <button className="icon-btn danger" title="Đăng xuất" onClick={() => logoutUser()}>
-            <LogOut size={16} aria-hidden="true" />
-          </button>
+
+          {/* Account button - replaces logout */}
+          <div className="account-fab-wrapper account-in-header" ref={accountMenuRef}>
+            <button
+              className="account-fab"
+              onClick={() => setShowAccountMenu(!showAccountMenu)}
+              title={user.email || 'Tài khoản'}
+            >
+              <UserIcon size={14} />
+              <span>{user.displayName || user.email?.split('@')[0] || 'Tài khoản'}</span>
+              <ChevronDown size={11} strokeWidth={3} style={{ transition: 'transform 0.2s ease', transform: showAccountMenu ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+            </button>
+
+            {showAccountMenu && (
+              <div className="account-menu">
+                <div className="account-menu-header">
+                  <div className="account-menu-avatar"><UserIcon size={18} /></div>
+                  <div>
+                    <div className="account-menu-name">{user.displayName || 'Người dùng'}</div>
+                    <div className="account-menu-email">{user.email}</div>
+                  </div>
+                </div>
+
+                <div className="account-menu-section">
+                  <label className="account-menu-label"><UserIcon size={11} /> Đổi tên hiển thị</label>
+                  <div className="account-menu-row">
+                    <input
+                      type="text"
+                      placeholder="Tên hiển thị mới"
+                      value={profileDisplayName}
+                      onChange={e => setProfileDisplayName(e.target.value)}
+                      className="account-menu-input"
+                    />
+                    <button className="account-menu-btn primary" onClick={() => { void handleSaveDisplayName(); }}>Lưu</button>
+                  </div>
+                </div>
+
+                <div className="account-menu-section">
+                  <label className="account-menu-label"><KeyRound size={11} /> Đổi mật khẩu</label>
+                  {!showPasswordForm ? (
+                    <button className="account-menu-btn secondary" onClick={() => setShowPasswordForm(true)}>Đổi mật khẩu</button>
+                  ) : (
+                    <>
+                      <input
+                        type="password"
+                        placeholder="Mật khẩu hiện tại"
+                        value={passwordCurrent}
+                        onChange={e => setPasswordCurrent(e.target.value)}
+                        className="account-menu-input"
+                        style={{ marginBottom: '6px' }}
+                      />
+                      <input
+                        type="password"
+                        placeholder="Mật khẩu mới"
+                        value={passwordNew}
+                        onChange={e => setPasswordNew(e.target.value)}
+                        className="account-menu-input"
+                        style={{ marginBottom: '6px' }}
+                      />
+                      <input
+                        type="password"
+                        placeholder="Xác nhận mật khẩu mới"
+                        value={passwordConfirm}
+                        onChange={e => setPasswordConfirm(e.target.value)}
+                        className="account-menu-input"
+                        style={{ marginBottom: '6px' }}
+                      />
+                      {passwordError && <div className="account-menu-error" style={{ marginBottom: '6px' }}><XCircle size={11} /> {passwordError}</div>}
+                      {passwordSuccess && <div className="account-menu-success" style={{ marginBottom: '6px' }}><CheckCircle size={11} /> {passwordSuccess}</div>}
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
+                        <button className="account-menu-btn secondary" style={{ flex: 1, margin: 0 }} onClick={() => { void handleChangePassword(); }}>Lưu</button>
+                        <button className="account-menu-btn" style={{ flex: 1, background: 'rgba(255,255,255,0.1)', color: '#fff' }} onClick={() => { setShowPasswordForm(false); setPasswordError(''); setPasswordSuccess(''); }}>Hủy</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="account-menu-divider" />
+                <button className="account-menu-logout" onClick={() => { void logoutUser(); setShowAccountMenu(false); }}>
+                  <LogOut size={13} /> Đăng xuất
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1024,6 +1121,7 @@ function App() {
         </div>
       )}
 
+
       {showSettingsModal && (
         <div className="modal-overlay">
           <div className="modal-content settings-modal">
@@ -1032,52 +1130,6 @@ function App() {
             <div className="settings-grid">
               {/* CỘT TRÁI: Lương & Khấu trừ */}
               <div className="settings-col">
-                <h3 className="settings-section-title"><UserIcon size={14} /> Tài khoản</h3>
-                <div className="settings-item-row profile-name-row">
-                  <input
-                    type="text"
-                    placeholder="Tên hiển thị"
-                    value={profileDisplayName}
-                    onChange={e => setProfileDisplayName(e.target.value)}
-                    style={{ flex: 1 }}
-                  />
-                  <button className="btn btn-secondary" onClick={handleSaveDisplayName}>Lưu tên</button>
-                </div>
-
-                <div className="settings-section password-section">
-                  <h3 className="settings-section-title"><KeyRound size={14} /> Đổi mật khẩu</h3>
-                  <div className="settings-item-row">
-                    <input
-                      type="password"
-                      placeholder="Mật khẩu hiện tại"
-                      value={passwordCurrent}
-                      onChange={e => setPasswordCurrent(e.target.value)}
-                      style={{ flex: 1 }}
-                    />
-                  </div>
-                  <div className="settings-item-row">
-                    <input
-                      type="password"
-                      placeholder="Mật khẩu mới"
-                      value={passwordNew}
-                      onChange={e => setPasswordNew(e.target.value)}
-                      style={{ flex: 1 }}
-                    />
-                  </div>
-                  <div className="settings-item-row">
-                    <input
-                      type="password"
-                      placeholder="Xác nhận mật khẩu mới"
-                      value={passwordConfirm}
-                      onChange={e => setPasswordConfirm(e.target.value)}
-                      style={{ flex: 1 }}
-                    />
-                  </div>
-                  {passwordError && <div className="sync-warning"><XCircle size={14} /> {passwordError}</div>}
-                  {passwordSuccess && <div className="sync-status">{passwordSuccess}</div>}
-                  <button className="btn btn-secondary" onClick={handleChangePassword}>Đổi mật khẩu</button>
-                </div>
-
                 <h3 className="settings-section-title"><DollarSign size={14} /> Lương & Khấu trừ</h3>
 
                 <div className="settings-row-2">
