@@ -834,7 +834,7 @@ function App() {
         <div className="modal-overlay" style={{ position: 'static', minHeight: '100vh' }}>
           <div className="modal-content" style={{ width: 'min(460px, 94vw)' }}>
             <h2>{authMode === 'login' ? <><Lock size={18} /> Đăng nhập</> : authMode === 'register' ? <><UserIcon size={18} /> Tạo tài khoản riêng</> : <><KeyRound size={18} /> Quên mật khẩu</>}</h2>
-            <p className="modal-desc">Mỗi tài khoản sẽ có dữ liệu chấm công riêng, tách biệt với người dùng khác.</p>
+            <p className="modal-desc">Tạo tài khoản để đồng bộ dữ liệu chấm công.</p>
             {authMode === 'register' && (
               <div className="form-group">
                 <label>Tên hiển thị</label>
