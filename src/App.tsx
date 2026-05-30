@@ -257,15 +257,16 @@ function App() {
   const isUserInputRef = useRef(false);
   const accountHydratedRef = useRef(false);
   const backgroundMusicEmbedUrl = 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A2326883063&color=%23ff5500&auto_play=true&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true';
-  const getCurrentTimeString = () => new Date().toLocaleString('vi-VN', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  }).replace('Th', 'T');
+  const getCurrentTimeString = () => {
+    const now = new Date();
+    const wd = WEEKDAYS[now.getDay()];
+    const d = String(now.getDate()).padStart(2, '0');
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const h = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    return `${wd} ${d}/${m} ${h}:${min}:${s}`;
+  };
   const [currentTime, setCurrentTime] = useState<string>(getCurrentTimeString());
 
   useEffect(() => {
