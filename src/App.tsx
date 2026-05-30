@@ -159,7 +159,20 @@ const EditableCurrency = ({ value, onChange, className, style }: { value: number
 };
 
 function App() {
-  const [activeTab, setActiveTab] = useState<number>(1);
+  const getInitialMonth = () => {
+    const today = new Date();
+    const todayDate = today.getDate();
+    const todayMonth = today.getMonth() + 1;
+    
+    // Bảng tính từ 25 tháng này đến 24 tháng sau
+    // Nên nếu ngày >= 25 thì nó ở tháng sau
+    if (todayDate >= 25) {
+      return todayMonth === 12 ? 1 : todayMonth + 1;
+    }
+    return todayMonth;
+  };
+  
+  const [activeTab, setActiveTab] = useState<number>(getInitialMonth());
   const [showMonthDropdown, setShowMonthDropdown] = useState<boolean>(false);
   const monthNavRef = useRef<HTMLDivElement>(null);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -690,11 +703,11 @@ function App() {
                   const isToday = dateIso === todayIso;
 
                   let rowClass = "wk";
-                  if (isTetDay) rowClass = "tet";
+                  if (isToday) rowClass = "cur";
+                  else if (isTetDay) rowClass = "tet";
                   else if (isHol) rowClass = "hol";
                   else if (lunarHolName) rowClass = "lunar-hol";
                   else if (isWe) rowClass = "we";
-                  else if (isToday) rowClass = "cur";
 
                   return (
                     <tr key={dateIso} className={rowClass} title={lunarHolName || undefined}>
