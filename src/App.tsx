@@ -257,7 +257,15 @@ function App() {
   const isUserInputRef = useRef(false);
   const accountHydratedRef = useRef(false);
   const backgroundMusicEmbedUrl = 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A2326883063&color=%23ff5500&auto_play=true&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true';
-  const getCurrentTimeString = () => new Date().toLocaleTimeString('vi-VN', { hour12: false });
+  const getCurrentTimeString = () => new Date().toLocaleString('vi-VN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).replace('Th', 'T');
   const [currentTime, setCurrentTime] = useState<string>(getCurrentTimeString());
 
   useEffect(() => {
@@ -929,9 +937,9 @@ function App() {
               Đồng bộ
             </button>
           </div>
-          <div className="led-ticker" aria-label="Thời gian hiện tại">
+          <div className="led-ticker" aria-label="Ngày và giờ hiện tại">
             <span>
-              Thời gian: {currentTime}
+              {currentTime}
             </span>
           </div>
           <div className="input-group">
