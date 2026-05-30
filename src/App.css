@@ -233,7 +233,7 @@ body::before {
   border-radius: 16px; 
   padding: 6px 10px 6px; 
   min-height: calc(100vh - 124px);
-  height: auto; 
+  height: auto;
   overflow: hidden;
   background: var(--glass);
   border: 1px solid var(--border-color);
@@ -288,35 +288,58 @@ body::before {
 .month-nav.prev { margin-left: 0; }
 .month-nav.next { margin-right: 0; }
 
-.month-content { display: flex; align-items: stretch; gap: 16px; flex: 1; min-height: 0; }
+.month-content { display: flex; align-items: stretch; gap: 16px; flex: 1; min-height: 0; height: 100%; }
 .month-table-container { 
   --col-day: 6.5%;
   --col-weekday: 6.5%;
   --col-ot: 21.75%;
   flex: 3; 
+  display: flex;
+  flex-direction: column;
   overflow: auto;
   border-radius: 13px; 
   min-height: 0;
-  height: 100%;
   background: var(--glass);
   border: 1px solid var(--border-color);
   box-shadow: inset 0 -1px 0 rgba(148,163,184,.1);
 }
 
+.data-table { width: 100%; min-height: 0; border-collapse: separate; border-spacing: 0; margin: 0; table-layout: fixed; }
+
 .breakdown-container { 
   flex: 1.8; 
-  position: sticky; 
-  top: 6px; 
+  position: relative; 
+  top: auto; 
+  display: flex;
+  flex-direction: column;
   border-radius: 15px; 
   padding: 14px; 
   min-height: 0; 
   height: 100%;
-  align-self: flex-start;
+  align-self: stretch;
   background: var(--glass);
   border: 1px solid var(--border-color);
 }
+.breakdown-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+.soundcloud-player {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(17,24,39,.88);
+}
+.soundcloud-player iframe {
+  display: block;
+  width: 100%;
+  height: 240px;
+}
 
-.data-table { width: 100%; height: 100%; border-collapse: separate; border-spacing: 0; margin: 0; table-layout: fixed; }
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; table-layout: fixed; }
 .data-table .col-day { width: var(--col-day); }
 .data-table .col-weekday { width: var(--col-weekday); }
 .data-table .col-ot { width: var(--col-ot); }

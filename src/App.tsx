@@ -256,50 +256,16 @@ function App() {
   const [autoSyncCode, setAutoSyncCode] = useState('');
   const isUserInputRef = useRef(false);
   const accountHydratedRef = useRef(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const backgroundMusicUrl = '/music.mp3'; // Đặt file nhạc vào public/music.mp3
-  const backgroundMusicInfo = {
-    title: 'Dạo Bước Hongkong 1999 / 漫步香港1999',
-    artist: 'Bố Lỗ Tích BlueC',
-    album: '',
-  };
-
-  const [musicStarted, setMusicStarted] = useState(false);
+  const backgroundMusicEmbedUrl = 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A2326883063&color=%23ff5500&auto_play=true&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true';
+  const getCurrentTimeString = () => new Date().toLocaleTimeString('vi-VN', { hour12: false });
+  const [currentTime, setCurrentTime] = useState<string>(getCurrentTimeString());
 
   useEffect(() => {
-    // Thử phát ngay (sẽ fail nếu chưa tương tác)
-    if (audioRef.current && !musicStarted) {
-      audioRef.current.play().then(() => {
-        setMusicStarted(true);
-      }).catch(() => {
-        // Ignored
-      });
-    }
-
-    // Đăng ký event để phát khi có tương tác
-    const handleFirstInteraction = () => {
-      if (audioRef.current && !musicStarted) {
-        audioRef.current.play().then(() => {
-          setMusicStarted(true);
-        }).catch(() => {});
-      }
-      document.removeEventListener('click', handleFirstInteraction);
-      document.removeEventListener('touchstart', handleFirstInteraction);
-      document.removeEventListener('keydown', handleFirstInteraction);
-    };
-
-    if (!musicStarted) {
-      document.addEventListener('click', handleFirstInteraction);
-      document.addEventListener('touchstart', handleFirstInteraction);
-      document.addEventListener('keydown', handleFirstInteraction);
-    }
-
-    return () => {
-      document.removeEventListener('click', handleFirstInteraction);
-      document.removeEventListener('touchstart', handleFirstInteraction);
-      document.removeEventListener('keydown', handleFirstInteraction);
-    };
-  }, [musicStarted]);
+    const timer = window.setInterval(() => {
+      setCurrentTime(getCurrentTimeString());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const unsub = watchAuthState((nextUser) => {
@@ -831,6 +797,17 @@ function App() {
               <span>THỰC NHẬN:</span>
               <span>{fmt(s.net)} VNĐ</span>
             </div>
+            <div className="soundcloud-player" style={{ width: '100%', marginTop: '16px' }}>
+              <iframe
+                width="100%"
+                height="240"
+                scrolling="no"
+                frameBorder="no"
+                allow="autoplay; encrypted-media"
+                src={backgroundMusicEmbedUrl}
+                title="SoundCloud player"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -901,14 +878,6 @@ function App() {
 
   return (
     <div className="app-container">
-      <audio
-        ref={audioRef}
-        src={backgroundMusicUrl}
-        loop
-        autoPlay
-        preload="auto"
-        style={{ display: 'none' }}
-      />
       <header className="header">
         <div className="header-left">
           <div className="header-top">
@@ -960,9 +929,9 @@ function App() {
               Đồng bộ
             </button>
           </div>
-          <div className="led-ticker" aria-label="Thông tin bài hát đang phát">
+          <div className="led-ticker" aria-label="Thời gian hiện tại">
             <span>
-              Đang phát: {backgroundMusicInfo.title} — {backgroundMusicInfo.artist}
+              Thời gian: {currentTime}
             </span>
           </div>
           <div className="input-group">
