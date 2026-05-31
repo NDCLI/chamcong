@@ -116,7 +116,7 @@ body::before {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.header-controls { display: flex; gap: 7px; align-items: center; flex-wrap: nowrap; overflow-x: auto; min-width: 0; }
+.header-controls { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; overflow: visible; min-width: 0; }
 .user-badge {
   max-width: 220px;
   min-height: 30px;
