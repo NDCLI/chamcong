@@ -462,6 +462,11 @@ body::before {
 }
 .modal-content h2 { margin: 0 0 8px; font-size: 1.3rem; font-weight: 900; color: #c4b5fd; }
 .modal-desc { margin-bottom: 18px; color: var(--text-muted); line-height: 1.55; }
+.auth-method-tabs { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.auth-method-tabs .tab-button { flex: 1 1 auto; min-width: 110px; padding: 10px 18px; border-radius: 999px; border: 1px solid transparent; cursor: pointer; font-weight: 900; transition: .24s ease; }
+.auth-method-tabs .tab-button.primary { background: linear-gradient(135deg, #5b21b6, #3730a3); color: white; }
+.auth-method-tabs .tab-button.secondary { background: linear-gradient(135deg, #4ade80, #22c55e); color: #062d16; }
+.auth-method-tabs .tab-button.active { transform: translateY(-1px); box-shadow: 0 16px 30px rgba(0,0,0,.18); }
 .form-group { margin-bottom: 14px; text-align: left; }
 .form-group label { display: block; margin-bottom: 7px; font-weight: 800; color: #d8b4fe; }
 .form-group input, .form-group textarea { width: 100%; padding: 11px 13px; border: 1px solid rgba(148,163,184,.22); border-radius: 14px; background: #1f232c; color: var(--text-main); }

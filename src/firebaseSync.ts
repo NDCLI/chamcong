@@ -1,6 +1,5 @@
-
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import {
   getAuth,
   onAuthStateChanged,
@@ -10,10 +9,15 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   updateProfile,
-  updatePassword,
   EmailAuthProvider,
   reauthenticateWithCredential,
-  type User,
+  updatePassword,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  PhoneAuthProvider,
+  linkWithCredential,
+  type ConfirmationResult,
+  type User
 } from 'firebase/auth';
 
 export const FIREBASE_CONFIG = {
@@ -26,100 +30,145 @@ export const FIREBASE_CONFIG = {
 };
 
 export const initFirebase = () => {
-  if (getApps().length === 0) {
-    return initializeApp(FIREBASE_CONFIG);
+  try {
+    if (getApps().length === 0) {
+      return initializeApp(FIREBASE_CONFIG);
+    }
+    return getApp();
+  } catch (error) {
+    console.error("Firebase init error:", error);
+    throw error;
   }
-  return getApp();
 };
 
-const scopedSyncId = (syncCode: string, userId?: string) => {
-  const raw = syncCode.trim();
-  if (!raw) throw new Error("Vui lòng nhập Mã đồng bộ!");
-  return userId ? `${userId}__${raw}` : raw;
+const app = initFirebase();
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const formatPhoneNumber = (phoneNumber: string) => {
+  const cleaned = phoneNumber.trim();
+  if (!cleaned) throw new Error('Số điện thoại không hợp lệ.');
+  if (cleaned.startsWith('+')) return cleaned;
+  return `+84${cleaned.replace(/^0+/, '')}`;
 };
 
-export const auth = getAuth(initFirebase());
-
-export const watchAuthState = (cb: (user: User | null) => void) => onAuthStateChanged(auth, cb);
+export const watchAuthState = (callback: (user: User | null) => void) => onAuthStateChanged(auth, callback);
 
 export const registerWithEmail = async (email: string, password: string, displayName?: string) => {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  if (displayName && userCredential.user) {
-    await updateProfile(userCredential.user, { displayName });
+  const credential = await createUserWithEmailAndPassword(auth, email, password);
+  if (displayName) {
+    await updateProfile(credential.user, { displayName });
   }
-  return userCredential;
+  return credential.user;
 };
 
-export const loginWithEmail = (email: string, password: string) =>
-  signInWithEmailAndPassword(auth, email, password);
+export const loginWithEmail = async (email: string, password: string) => {
+  return signInWithEmailAndPassword(auth, email, password);
+};
 
-export const logoutUser = () => signOut(auth);
+export const logoutUser = async () => signOut(auth);
 
-export const sendVerifyEmail = () => {
-  if (!auth.currentUser) throw new Error('Bạn chưa đăng nhập.');
+export const sendVerifyEmail = async () => {
+  if (!auth.currentUser) throw new Error('Không có người dùng đang đăng nhập.');
   return sendEmailVerification(auth.currentUser);
 };
 
+export const resetPasswordByEmail = async (email: string) => {
+  return sendPasswordResetEmail(auth, email);
+};
+
 export const updateDisplayNameProfile = async (displayName: string) => {
-  if (!auth.currentUser) throw new Error('Bạn chưa đăng nhập.');
+  if (!auth.currentUser) throw new Error('Không có người dùng đang đăng nhập.');
   await updateProfile(auth.currentUser, { displayName });
   return auth.currentUser;
 };
 
-export const resetPasswordByEmail = (email: string) => sendPasswordResetEmail(auth, email);
-
 export const updateUserPassword = async (currentPassword: string, newPassword: string) => {
-  if (!auth.currentUser) throw new Error('Bạn chưa đăng nhập.');
+  if (!auth.currentUser) throw new Error('Không có người dùng đang đăng nhập.');
   const email = auth.currentUser.email;
-  if (!email) throw new Error('Email tài khoản không hợp lệ.');
+  if (!email) throw new Error('Không thể xác thực bằng email.');
   const credential = EmailAuthProvider.credential(email, currentPassword);
   await reauthenticateWithCredential(auth.currentUser, credential);
   await updatePassword(auth.currentUser, newPassword);
   return auth.currentUser;
 };
 
-export const syncToCloud = async (syncCode: string, data: unknown, userId?: string) => {
-  const app = initFirebase();
-  const db = getFirestore(app);
-  const id = scopedSyncId(syncCode, userId);
-  await setDoc(doc(db, 'salary_sync', id), { data, updatedAt: new Date().toISOString(), userId: userId ?? null });
-};
-
-export const syncFromCloud = async (syncCode: string, userId?: string) => {
-  const app = initFirebase();
-  const db = getFirestore(app);
-  const raw = syncCode.trim();
-  const id = scopedSyncId(syncCode, userId);
-
-  const docSnap = await getDoc(doc(db, 'salary_sync', id));
-  if (docSnap.exists()) {
-    return docSnap.data().data;
-  }
-
-  // Backward compatibility: older cloud data was saved with only the sync code,
-  // before data was scoped per Firebase account.
-  if (userId && raw && raw !== id) {
-    const legacySnap = await getDoc(doc(db, 'salary_sync', raw));
-    if (legacySnap.exists()) {
-      return legacySnap.data().data;
+export const setupRecaptcha = (elementId: string, invisible = true) => {
+  return new RecaptchaVerifier(auth, elementId, {
+    size: invisible ? 'invisible' : 'normal',
+    callback: () => {},
+    'expired-callback': () => {
+      throw new Error('reCAPTCHA đã hết hạn, vui lòng thử lại.');
     }
-  }
-
-  throw new Error("Không tìm thấy dữ liệu với Mã đồng bộ này!");
+  });
 };
 
-export const syncAccountToCloud = async (userId: string, data: unknown) => {
-  const app = initFirebase();
-  const db = getFirestore(app);
-  await setDoc(doc(db, 'salary_users', userId), { data, updatedAt: serverTimestamp() }, { merge: true });
+export const sendPhoneOTP = async (
+  phoneNumber: string,
+  recaptchaVerifier: RecaptchaVerifier
+): Promise<ConfirmationResult> => {
+  const formattedPhone = formatPhoneNumber(phoneNumber);
+  return signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier);
 };
 
-export const syncAccountFromCloud = async (userId: string) => {
-  const app = initFirebase();
-  const db = getFirestore(app);
-  const docSnap = await getDoc(doc(db, 'salary_users', userId));
+export const verifyPhoneOTP = async (
+  confirmationResult: ConfirmationResult,
+  otpCode: string
+) => {
+  return confirmationResult.confirm(otpCode);
+};
+
+export const linkPhoneToAccount = async (
+  phoneNumber: string,
+  recaptchaVerifier: RecaptchaVerifier
+) => {
+  if (!auth.currentUser) throw new Error('Bạn chưa đăng nhập.');
+  const formattedPhone = formatPhoneNumber(phoneNumber);
+  return signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier);
+};
+
+export const confirmLinkPhone = async (
+  confirmationResult: ConfirmationResult,
+  otpCode: string
+) => {
+  if (!auth.currentUser) throw new Error('Bạn chưa đăng nhập.');
+  const credential = PhoneAuthProvider.credential(
+    confirmationResult.verificationId,
+    otpCode
+  );
+  return linkWithCredential(auth.currentUser, credential);
+};
+
+export const syncToCloud = async (syncCode: string, data: any, ownerId?: string) => {
+  if (!syncCode) throw new Error('Vui lòng nhập Mã đồng bộ!');
+  await setDoc(doc(db, 'salary_sync', syncCode), {
+    data,
+    ownerId: ownerId || null,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+export const syncFromCloud = async (syncCode: string) => {
+  if (!syncCode) throw new Error('Vui lòng nhập Mã đồng bộ!');
+  const docSnap = await getDoc(doc(db, 'salary_sync', syncCode));
   if (docSnap.exists()) {
     return docSnap.data().data;
   }
-  return null;
+  throw new Error('Không tìm thấy dữ liệu với Mã đồng bộ này!');
 };
+
+export const syncAccountToCloud = async (uid: string, data: any) => {
+  if (!uid) throw new Error('UID không hợp lệ.');
+  await setDoc(doc(db, 'salary_accounts', uid), {
+    data,
+    updatedAt: new Date().toISOString()
+  });
+};
+
+export const syncAccountFromCloud = async (uid: string) => {
+  if (!uid) throw new Error('UID không hợp lệ.');
+  const docSnap = await getDoc(doc(db, 'salary_accounts', uid));
+  if (!docSnap.exists()) return null;
+  return docSnap.data().data;
+};
+

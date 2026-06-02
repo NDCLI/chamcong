@@ -1,8 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
-import type { User } from 'firebase/auth'
+import type { User, ConfirmationResult, RecaptchaVerifier } from 'firebase/auth'
 import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday } from './logic'
-import { syncToCloud, syncFromCloud, syncAccountToCloud, syncAccountFromCloud, watchAuthState, registerWithEmail, loginWithEmail, logoutUser, sendVerifyEmail, resetPasswordByEmail, updateDisplayNameProfile, updateUserPassword } from './firebaseSync'
+import {
+  syncToCloud,
+  syncFromCloud,
+  syncAccountToCloud,
+  syncAccountFromCloud,
+  watchAuthState,
+  registerWithEmail,
+  loginWithEmail,
+  logoutUser,
+  sendVerifyEmail,
+  resetPasswordByEmail,
+  updateDisplayNameProfile,
+  updateUserPassword,
+  setupRecaptcha,
+  sendPhoneOTP,
+  verifyPhoneOTP
+} from './firebaseSync'
 import { Analytics } from "@vercel/analytics/react"
 import {
   TrendingUp, User as UserIcon, Cloud, Settings, LogOut,
@@ -235,9 +251,14 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
-  const [authEmail, setAuthEmail] = useState('');
+  const [authIdentifier, setAuthIdentifier] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authDisplayName, setAuthDisplayName] = useState('');
+  const [authOTP, setAuthOTP] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
+  const [otpResendTimer, setOtpResendTimer] = useState(0);
   const [profileDisplayName, setProfileDisplayName] = useState('');
   const [passwordCurrent, setPasswordCurrent] = useState('');
   const [passwordNew, setPasswordNew] = useState('');
@@ -284,6 +305,14 @@ function App() {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (otpResendTimer <= 0) return;
+    const countdown = window.setInterval(() => {
+      setOtpResendTimer(prev => Math.max(prev - 1, 0));
+    }, 1000);
+    return () => window.clearInterval(countdown);
+  }, [otpResendTimer]);
 
   useEffect(() => {
     accountHydratedRef.current = false;
@@ -508,7 +537,7 @@ function App() {
     try {
       setSyncStatus('Đang tải về...');
       if (user) localStorage.setItem(storageSyncKey(user.uid), syncCode);
-      const cloudData = await syncFromCloud(syncCode, user?.uid);
+      const cloudData = await syncFromCloud(syncCode);
       if (cloudData) {
         setData(cloudData);
         setAutoSyncCode(syncCode.trim());
@@ -522,7 +551,56 @@ function App() {
   const handleAuthSubmit = async () => {
     setAuthError('');
     setAuthSuccess('');
-    if (!authEmail.trim()) {
+
+    const isEmail = authIdentifier.includes('@');
+    const isPhone = !isEmail;
+
+    if (isPhone) {
+      if (!authIdentifier.trim()) {
+        setAuthError('Vui lòng nhập số điện thoại.');
+        return;
+      }
+
+      if (authMode === 'forgot') {
+        setAuthError('Quên mật khẩu chỉ hỗ trợ email. Vui lòng nhập email hoặc dùng số điện thoại để đăng nhập.');
+        return;
+      }
+
+      try {
+        if (!otpSent) {
+          const verifier = recaptchaVerifier ?? setupRecaptcha('recaptcha-container');
+          if (!recaptchaVerifier) setRecaptchaVerifier(verifier);
+          const confirmation = await sendPhoneOTP(authIdentifier.trim(), verifier);
+          setConfirmationResult(confirmation);
+          setOtpSent(true);
+          setOtpResendTimer(60);
+          setAuthSuccess('OTP đã được gửi. Vui lòng nhập mã để xác thực.');
+          return;
+        }
+
+        if (!authOTP.trim()) {
+          setAuthError('Vui lòng nhập mã OTP.');
+          return;
+        }
+        if (!confirmationResult) {
+          setAuthError('Lỗi xác thực OTP. Vui lòng thử lại.');
+          return;
+        }
+
+        await verifyPhoneOTP(confirmationResult, authOTP.trim());
+        setAuthSuccess('Đăng nhập bằng số điện thoại thành công.');
+        setAuthIdentifier('');
+        setAuthOTP('');
+        setOtpSent(false);
+        setConfirmationResult(null);
+      } catch (e: unknown) {
+        setAuthError((e instanceof Error ? e.message : '') || 'Thao tác đăng nhập bằng số điện thoại thất bại.');
+      }
+
+      return;
+    }
+
+    if (!authIdentifier.trim()) {
       setAuthError('Vui lòng nhập email hợp lệ.');
       return;
     }
@@ -533,18 +611,40 @@ function App() {
 
     try {
       if (authMode === 'register') {
-        await registerWithEmail(authEmail.trim(), authPassword, authDisplayName.trim() || undefined);
+        await registerWithEmail(authIdentifier.trim(), authPassword, authDisplayName.trim() || undefined);
         await sendVerifyEmail();
         setAuthSuccess('Đã tạo tài khoản. Vui lòng kiểm tra email để xác thực.');
       } else if (authMode === 'forgot') {
-        await resetPasswordByEmail(authEmail.trim());
+        await resetPasswordByEmail(authIdentifier.trim());
         setAuthSuccess('Đã gửi email đặt lại mật khẩu.');
       } else {
-        await loginWithEmail(authEmail.trim(), authPassword);
+        await loginWithEmail(authIdentifier.trim(), authPassword);
       }
       setAuthPassword('');
     } catch (e: unknown) {
       setAuthError((e instanceof Error ? e.message : '') || 'Thao tác xác thực thất bại.');
+    }
+  };
+
+  const handleResendPhoneOTP = async () => {
+    setAuthError('');
+    setAuthSuccess('');
+    if (otpResendTimer > 0) return;
+    if (!authIdentifier.trim()) {
+      setAuthError('Vui lòng nhập số điện thoại.');
+      return;
+    }
+
+    try {
+      const verifier = recaptchaVerifier ?? setupRecaptcha('recaptcha-container');
+      if (!recaptchaVerifier) setRecaptchaVerifier(verifier);
+      const confirmation = await sendPhoneOTP(authIdentifier.trim(), verifier);
+      setConfirmationResult(confirmation);
+      setOtpSent(true);
+      setOtpResendTimer(60);
+      setAuthSuccess('OTP mới đã được gửi.');
+    } catch (e: unknown) {
+      setAuthError((e instanceof Error ? e.message : '') || 'Không thể gửi lại OTP.');
     }
   };
 
@@ -847,18 +947,19 @@ function App() {
               </div>
             )}
             <div className="form-group">
-              <label>Email</label>
+              <label>Email hoặc SĐT</label>
               <input
-                type="email"
-                value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
+                type="text"
+                value={authIdentifier}
+                onChange={(e) => setAuthIdentifier(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
-                placeholder="you@example.com"
+                placeholder="you@example.com hoặc 0912345678"
               />
+              <small>Nhập email hoặc số điện thoại Việt Nam (bắt đầu bằng 0 hoặc +84).</small>
             </div>
-            <div className="form-group">
-              <label>Mật khẩu</label>
-              {authMode !== 'forgot' && (
+            {authIdentifier.includes('@') && authMode !== 'forgot' && (
+              <div className="form-group">
+                <label>Mật khẩu</label>
                 <input
                   type="password"
                   value={authPassword}
@@ -866,18 +967,49 @@ function App() {
                   onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
                   placeholder="Tối thiểu 6 ký tự"
                 />
-              )}
-            </div>
+              </div>
+            )}
+            {otpSent && (
+              <div className="form-group">
+                <label>OTP</label>
+                <input
+                  type="text"
+                  value={authOTP}
+                  onChange={(e) => setAuthOTP(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
+                  placeholder="Mã OTP"
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+                  <button className="btn btn-secondary" type="button" onClick={handleResendPhoneOTP} disabled={otpResendTimer > 0}>
+                    {otpResendTimer > 0 ? `Gửi lại sau ${otpResendTimer}s` : 'Gửi lại OTP'}
+                  </button>
+                  <span style={{ fontSize: '0.9rem', color: '#666' }}>
+                    OTP sẽ hết hạn trong vài phút.
+                  </span>
+                </div>
+              </div>
+            )}
+            <div id="recaptcha-container" style={{ minHeight: 1, width: 1, opacity: 0, position: 'absolute', pointerEvents: 'none' }} />
             {authError && <div className="sync-warning"><XCircle size={14} /> {authError}</div>}
             {authSuccess && <div className="sync-status"><CheckCircle size={14} /> {authSuccess}</div>}
-            <div className="modal-actions">
+            <div className="modal-actions" style={{ flexWrap: 'wrap', gap: '8px' }}>
               <button className="btn btn-primary" onClick={handleAuthSubmit}>
-                {authMode === 'login' ? 'Đăng nhập' : authMode === 'register' ? 'Tạo tài khoản' : 'Gửi email đặt lại'}
+                {authIdentifier.includes('@')
+                  ? authMode === 'login'
+                    ? 'Đăng nhập'
+                    : authMode === 'register'
+                      ? 'Tạo tài khoản'
+                      : 'Gửi email đặt lại'
+                  : otpSent
+                    ? 'Xác nhận OTP'
+                    : 'Gửi OTP'}
               </button>
               <button className="btn btn-secondary" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); setAuthSuccess(''); }}>
                 {authMode === 'login' ? 'Đăng ký' : 'Đăng nhập'}
               </button>
-              <button className="btn btn-danger" style={{ marginLeft: 0 }} onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); }}>Quên mật khẩu</button>
+              <button className="btn btn-danger" style={{ marginLeft: 0 }} onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); }}>
+                Quên mật khẩu
+              </button>
             </div>
           </div>
         </div>
