@@ -259,7 +259,7 @@ function App() {
     : '/?login=1';
   const openLoginPage = () => {
     if (typeof window !== 'undefined') {
-      window.open(loginPageUrl, '_blank', 'noopener');
+      window.location.href = loginPageUrl;
     }
   };
   const [passwordNew, setPasswordNew] = useState('');
