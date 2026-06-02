@@ -929,11 +929,29 @@ function App() {
 
   if (!user) {
     return (
-      <div className="app-container">
-        <div className="modal-overlay" style={{ position: 'static', minHeight: '100vh' }}>
-          <div className="modal-content" style={{ width: 'min(460px, 94vw)' }}>
-            <h2>{authMode === 'login' ? <><Lock size={18} /> Đăng nhập</> : authMode === 'register' ? <><UserIcon size={18} /> Tạo tài khoản riêng</> : <><KeyRound size={18} /> Quên mật khẩu</>}</h2>
-            <p className="modal-desc">Tạo tài khoản để đồng bộ dữ liệu chấm công.</p>
+      <div className="app-container landing-page">
+        <div className="landing-hero">
+          <span className="eyebrow">Ứng dụng quản lý lương cá nhân</span>
+          <h1>Bảng Tính Lương</h1>
+          <p className="landing-description">
+            Tính toán lương, OT, tiền thưởng và các khoản khấu trừ BHXH/BHYT/BHTN/Thuế TNCN một cách nhanh chóng.
+            Dữ liệu được đồng bộ an toàn qua Firebase và sử dụng được trên nhiều thiết bị.
+          </p>
+          <div className="landing-features">
+            <div>• Tính lương theo tháng và hiển thị kết quả rõ ràng.</div>
+            <div>• Quản lý tăng ca, trợ cấp và khấu trừ tự động.</div>
+            <div>• Đồng bộ dữ liệu qua tài khoản đăng nhập.</div>
+          </div>
+          <div className="landing-links">
+            <a href="/privacy.html">Chính sách quyền riêng tư</a>
+            <a href="/terms.html">Điều khoản dịch vụ</a>
+          </div>
+        </div>
+
+        <div className="auth-panel">
+          <div className="auth-card">
+            <h2>{authMode === 'login' ? <><Lock size={18} /> Đăng nhập</> : authMode === 'register' ? <><UserIcon size={18} /> Tạo tài khoản</> : <><KeyRound size={18} /> Quên mật khẩu</>}</h2>
+            <p className="modal-desc">Đăng nhập để đồng bộ dữ liệu và tiếp tục tính lương.</p>
             {authMode === 'register' && (
               <div className="form-group">
                 <label>Tên hiển thị</label>
@@ -947,7 +965,7 @@ function App() {
               </div>
             )}
             <div className="form-group">
-              <label>Email hoặc SĐT</label>
+              <label>Email hoặc Số điện thoại</label>
               <input
                 type="text"
                 value={authIdentifier}
@@ -979,13 +997,11 @@ function App() {
                   onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
                   placeholder="Mã OTP"
                 />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+                <div className="otp-footer">
                   <button className="btn btn-secondary" type="button" onClick={handleResendPhoneOTP} disabled={otpResendTimer > 0}>
                     {otpResendTimer > 0 ? `Gửi lại sau ${otpResendTimer}s` : 'Gửi lại OTP'}
                   </button>
-                  <span style={{ fontSize: '0.9rem', color: '#666' }}>
-                    OTP sẽ hết hạn trong vài phút.
-                  </span>
+                  <span>OTP sẽ hết hạn trong vài phút.</span>
                 </div>
               </div>
             )}
@@ -1007,7 +1023,7 @@ function App() {
               <button className="btn btn-secondary" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); setAuthSuccess(''); }}>
                 {authMode === 'login' ? 'Đăng ký' : 'Đăng nhập'}
               </button>
-              <button className="btn btn-danger" style={{ marginLeft: 0 }} onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); }}>
+              <button className="btn btn-danger" type="button" onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); }}>
                 Quên mật khẩu
               </button>
             </div>
