@@ -253,6 +253,15 @@ function App() {
   const [authDisplayName, setAuthDisplayName] = useState('');
   const [profileDisplayName, setProfileDisplayName] = useState('');
   const [passwordCurrent, setPasswordCurrent] = useState('');
+  const isLoginPage = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('login') === '1';
+  const loginPageUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}?login=1`
+    : '/?login=1';
+  const openLoginPage = () => {
+    if (typeof window !== 'undefined') {
+      window.open(loginPageUrl, '_blank', 'noopener');
+    }
+  };
   const [passwordNew, setPasswordNew] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -842,6 +851,71 @@ function App() {
   }
 
   if (!user) {
+    if (isLoginPage) {
+      return (
+        <div className="app-container auth-only-page">
+          <div className="auth-panel auth-panel-single">
+            <div className="auth-card">
+              <h2>{authMode === 'login' ? <><Lock size={18} /> Đăng nhập</> : authMode === 'register' ? <><UserIcon size={18} /> Tạo tài khoản</> : <><KeyRound size={18} /> Quên mật khẩu</>}</h2>
+              <p className="modal-desc">Đăng nhập để đồng bộ dữ liệu và tiếp tục tính lương.</p>
+              {authMode === 'register' && (
+                <div className="form-group">
+                  <label>Tên hiển thị</label>
+                  <input
+                    type="text"
+                    value={authDisplayName}
+                    onChange={(e) => setAuthDisplayName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
+                    placeholder="Tên của bạn"
+                  />
+                </div>
+              )}
+              <div className="form-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={authIdentifier}
+                  onChange={(e) => setAuthIdentifier(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
+                  placeholder="you@example.com"
+                />
+                <small>Nhập email để đăng nhập hoặc nhận lại mật khẩu.</small>
+              </div>
+              {authMode !== 'forgot' && (
+                <div className="form-group">
+                  <label>Mật khẩu</label>
+                  <input
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
+                    placeholder="Tối thiểu 6 ký tự"
+                  />
+                </div>
+              )}
+              {authError && <div className="sync-warning"><XCircle size={14} /> {authError}</div>}
+              {authSuccess && <div className="sync-status"><CheckCircle size={14} /> {authSuccess}</div>}
+              <div className="modal-actions" style={{ flexWrap: 'wrap', gap: '8px' }}>
+                <button className="btn btn-primary" onClick={handleAuthSubmit}>
+                  {authMode === 'login'
+                    ? 'Đăng nhập'
+                    : authMode === 'register'
+                      ? 'Tạo tài khoản'
+                      : 'Gửi email đặt lại'}
+                </button>
+                <button className="btn btn-secondary" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); setAuthSuccess(''); }}>
+                  {authMode === 'login' ? 'Đăng ký' : 'Đăng nhập'}
+                </button>
+                <button className="btn btn-danger" type="button" onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); }}>
+                  Quên mật khẩu
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="app-container landing-page">
         <div className="landing-hero">
@@ -856,68 +930,20 @@ function App() {
             <div>• Quản lý tăng ca, trợ cấp và khấu trừ tự động.</div>
             <div>• Đồng bộ dữ liệu qua tài khoản đăng nhập.</div>
           </div>
+
+          <div className="hero-card">
+            <h2>Giữ quyền kiểm soát lương của bạn</h2>
+            <p>Nhập số liệu nhanh, theo dõi trả lương theo tháng, và xem ngay tiền thực nhận sau khấu trừ BHXH/BHYT/BHTN/Thuế TNCN.</p>
+            <div className="hero-buttons">
+              <button className="btn btn-hero" onClick={openLoginPage}>
+                Đăng nhập ngay
+              </button>
+            </div>
+          </div>
+
           <div className="landing-links">
             <a href="/privacy.html">Chính sách quyền riêng tư</a>
             <a href="/terms.html">Điều khoản dịch vụ</a>
-          </div>
-        </div>
-
-        <div className="auth-panel">
-          <div className="auth-card">
-            <h2>{authMode === 'login' ? <><Lock size={18} /> Đăng nhập</> : authMode === 'register' ? <><UserIcon size={18} /> Tạo tài khoản</> : <><KeyRound size={18} /> Quên mật khẩu</>}</h2>
-            <p className="modal-desc">Đăng nhập để đồng bộ dữ liệu và tiếp tục tính lương.</p>
-            {authMode === 'register' && (
-              <div className="form-group">
-                <label>Tên hiển thị</label>
-                <input
-                  type="text"
-                  value={authDisplayName}
-                  onChange={(e) => setAuthDisplayName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
-                  placeholder="Tên của bạn"
-                />
-              </div>
-            )}
-            <div className="form-group">
-              <label>Email</label>
-              <input
-                type="email"
-                value={authIdentifier}
-                onChange={(e) => setAuthIdentifier(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
-                placeholder="you@example.com"
-              />
-              <small>Nhập email để đăng nhập hoặc nhận lại mật khẩu.</small>
-            </div>
-            {authMode !== 'forgot' && (
-              <div className="form-group">
-                <label>Mật khẩu</label>
-                <input
-                  type="password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
-                  placeholder="Tối thiểu 6 ký tự"
-                />
-              </div>
-            )}
-            {authError && <div className="sync-warning"><XCircle size={14} /> {authError}</div>}
-            {authSuccess && <div className="sync-status"><CheckCircle size={14} /> {authSuccess}</div>}
-            <div className="modal-actions" style={{ flexWrap: 'wrap', gap: '8px' }}>
-              <button className="btn btn-primary" onClick={handleAuthSubmit}>
-                {authMode === 'login'
-                  ? 'Đăng nhập'
-                  : authMode === 'register'
-                    ? 'Tạo tài khoản'
-                    : 'Gửi email đặt lại'}
-              </button>
-              <button className="btn btn-secondary" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); setAuthSuccess(''); }}>
-                {authMode === 'login' ? 'Đăng ký' : 'Đăng nhập'}
-              </button>
-              <button className="btn btn-danger" type="button" onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthSuccess(''); }}>
-                Quên mật khẩu
-              </button>
-            </div>
           </div>
         </div>
       </div>
