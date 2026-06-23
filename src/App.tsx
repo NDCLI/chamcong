@@ -920,7 +920,7 @@ function App() {
       <div className="app-container landing-page">
         <div className="landing-hero">
           <span className="eyebrow">Ứng dụng quản lý lương cá nhân</span>
-          <h1>Bảng Tính Lương</h1>
+          <h1>Bảng chấm công</h1>
           <p className="landing-description">
             Tính toán lương, OT, tiền thưởng và các khoản khấu trừ BHXH/BHYT/BHTN/Thuế TNCN một cách nhanh chóng.
             Dữ liệu được đồng bộ an toàn qua Firebase và sử dụng được trên nhiều thiết bị.
@@ -955,7 +955,7 @@ function App() {
       <header className="header">
         <div className="header-left">
           <div className="header-top">
-            <h1 className="header-title"><TrendingUp size={20} /> Bảng tính lương</h1>
+            <h1 className="header-title"><TrendingUp size={20} /> Bảng chấm công</h1>
             <div className="header-month-nav" ref={monthNavRef}>
               <button className="month-nav prev" onClick={() => { setActiveTab(activeTab === 1 ? 12 : activeTab - 1); setShowMonthDropdown(false); }} aria-label="Previous month">
                 <ChevronLeft size={16} strokeWidth={2.5} />
