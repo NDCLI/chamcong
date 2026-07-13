@@ -50,6 +50,7 @@ interface AppSettings {
   deductions?: Allowance[];
   allowances: Allowance[];
   bonuses: Allowance[];
+  google_calendar_url?: string;
 }
 
 interface AppData {
@@ -236,7 +237,8 @@ function App() {
         other_deduction: 0,
         deductions: [],
         allowances: [],
-        bonuses: []
+        bonuses: [],
+        google_calendar_url: 'https://calendar.google.com/calendar/embed?src=nguyenkimhoavb%40gmail.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'
       }
     };
     for (let m = 1; m <= 12; m++) {
@@ -278,7 +280,6 @@ function App() {
   const [autoSyncCode, setAutoSyncCode] = useState('');
   const isUserInputRef = useRef(false);
   const accountHydratedRef = useRef(false);
-  const backgroundMusicEmbedUrl = 'https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A2326883063&color=%23ff5500&auto_play=true&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true';
   const getCurrentTimeString = () => {
     const now = new Date();
     const wd = WEEKDAYS[now.getDay()];
@@ -402,7 +403,7 @@ function App() {
     setData(prev => ({
       ...prev,
       settings: {
-        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, deductions: [], allowances: [], bonuses: [] }),
+        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, deductions: [], allowances: [], bonuses: [], google_calendar_url: 'https://calendar.google.com/calendar/embed?src=nguyenkimhoavb%40gmail.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' }),
         ...updates
       }
     }));
@@ -829,16 +830,107 @@ function App() {
               <span>THỰC NHẬN:</span>
               <span>{fmt(s.net)} VNĐ</span>
             </div>
-            <div className="soundcloud-player" style={{ width: '100%', marginTop: '16px' }}>
-              <iframe
-                width="100%"
-                height="240"
-                scrolling="no"
-                frameBorder="no"
-                allow="autoplay; encrypted-media"
-                src={backgroundMusicEmbedUrl}
-                title="SoundCloud player"
-              />
+            <div className="google-calendar-container" style={{ width: '100%', marginTop: '16px' }}>
+              <div className="breakdown-card additions" style={{ margin: 0, padding: '16px' }}>
+                <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CalendarDays size={14} strokeWidth={2.5} /> LỊCH
+                  </span>
+                  <button 
+                    onClick={() => {
+                      const url = window.prompt("Nhập link nhúng Google Calendar của bạn (hoặc Calendar ID):", data.settings?.google_calendar_url || "");
+                      if (url !== null) {
+                        let finalUrl = url.trim();
+                        if (finalUrl && !finalUrl.startsWith('http')) {
+                          finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(finalUrl)}&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0`;
+                        } else if (finalUrl && finalUrl.startsWith('http')) {
+                          try {
+                            const urlObj = new URL(finalUrl);
+                            urlObj.searchParams.set('showTitle', '0');
+                            urlObj.searchParams.set('showCalendars', '0');
+                            urlObj.searchParams.set('showTz', '0');
+                            if (!urlObj.searchParams.getAll('src').includes('vi.vietnamese#holiday@group.v.calendar.google.com')) {
+                              urlObj.searchParams.append('src', 'vi.vietnamese#holiday@group.v.calendar.google.com');
+                            }
+                            finalUrl = urlObj.toString();
+                          } catch {
+                            if (!finalUrl.includes('showTitle=')) {
+                              finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'showTitle=0';
+                            }
+                            if (!finalUrl.includes('showCalendars=')) {
+                              finalUrl += '&showCalendars=0';
+                            }
+                            if (!finalUrl.includes('showTz=')) {
+                              finalUrl += '&showTz=0';
+                            }
+                          }
+                        }
+                        updateSettings({ google_calendar_url: finalUrl });
+                      }
+                    }}
+                    className="btn-mini-settings"
+                    style={{ 
+                      background: 'rgba(255, 255, 255, 0.1)', 
+                      border: 'none', 
+                      borderRadius: '4px', 
+                      color: 'var(--text-main)', 
+                      padding: '4px 8px', 
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 600
+                    }}
+                  >
+                    Cài đặt lịch
+                  </button>
+                </h3>
+                
+                {data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=nguyenkimhoavb%40gmail.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' ? (
+                  <div style={{ position: 'relative', width: '100%', height: '300px', overflow: 'hidden', borderRadius: '8px' }}>
+                    <iframe
+                      src={data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=nguyenkimhoavb%40gmail.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'}
+                      style={{ border: '0', borderRadius: '8px', background: 'white', position: 'absolute', top: '0', left: '0' }}
+                      width="100%"
+                      height="340"
+                      frameBorder="0"
+                      scrolling="no"
+                      title="Google Calendar"
+                    />
+                  </div>
+                ) : (
+                  <div className="calendar-setup-placeholder" style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    padding: '30px 20px', 
+                    background: 'rgba(255, 255, 255, 0.02)', 
+                    borderRadius: '8px',
+                    border: '1px dashed var(--border-color)',
+                    textAlign: 'center'
+                  }}>
+                    <CalendarDays size={32} style={{ color: 'var(--text-muted)', marginBottom: '8px' }} />
+                    <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Chưa cấu hình lịch Google Calendar. Bạn có thể nhúng lịch cá nhân hoặc lịch công việc vào đây.
+                    </p>
+                    <button 
+                      onClick={() => {
+                        const url = window.prompt("Nhập link nhúng Google Calendar hoặc Calendar ID (Email của bạn):");
+                        if (url) {
+                          let finalUrl = url.trim();
+                          if (!finalUrl.startsWith('http')) {
+                            finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(finalUrl)}&ctz=Asia%2FHo_Chi_Minh`;
+                          }
+                          updateSettings({ google_calendar_url: finalUrl });
+                        }
+                      }}
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                    >
+                      Kết nối lịch ngay
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
