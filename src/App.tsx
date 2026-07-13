@@ -238,7 +238,7 @@ function App() {
         deductions: [],
         allowances: [],
         bonuses: [],
-        google_calendar_url: 'https://calendar.google.com/calendar/embed?src=nguyenkimhoavb%40gmail.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'
+        google_calendar_url: 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'
       }
     };
     for (let m = 1; m <= 12; m++) {
@@ -403,7 +403,7 @@ function App() {
     setData(prev => ({
       ...prev,
       settings: {
-        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, deductions: [], allowances: [], bonuses: [], google_calendar_url: 'https://calendar.google.com/calendar/embed?src=nguyenkimhoavb%40gmail.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' }),
+        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, deductions: [], allowances: [], bonuses: [], google_calendar_url: 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' }),
         ...updates
       }
     }));
@@ -841,7 +841,17 @@ function App() {
                       const url = window.prompt("Nhập link nhúng Google Calendar của bạn (hoặc Calendar ID):", data.settings?.google_calendar_url || "");
                       if (url !== null) {
                         let finalUrl = url.trim();
-                        if (finalUrl && !finalUrl.startsWith('http')) {
+                        if (finalUrl && finalUrl.includes('cid=')) {
+                          try {
+                            const urlObj = new URL(finalUrl);
+                            const cidVal = urlObj.searchParams.get('cid');
+                            if (cidVal) {
+                              finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(cidVal)}&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0`;
+                            }
+                          } catch {
+                            // ignore
+                          }
+                        } else if (finalUrl && !finalUrl.startsWith('http')) {
                           finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(finalUrl)}&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0`;
                         } else if (finalUrl && finalUrl.startsWith('http')) {
                           try {
@@ -884,10 +894,10 @@ function App() {
                   </button>
                 </h3>
                 
-                {data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=nguyenkimhoavb%40gmail.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' ? (
+                {data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' ? (
                   <div style={{ position: 'relative', width: '100%', height: '300px', overflow: 'hidden', borderRadius: '8px' }}>
                     <iframe
-                      src={data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=nguyenkimhoavb%40gmail.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'}
+                      src={data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'}
                       style={{ border: '0', borderRadius: '8px', background: 'white', position: 'absolute', top: '0', left: '0' }}
                       width="100%"
                       height="340"
