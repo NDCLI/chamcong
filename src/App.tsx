@@ -238,7 +238,7 @@ function App() {
         deductions: [],
         allowances: [],
         bonuses: [],
-        google_calendar_url: 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'
+        google_calendar_url: 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'
       }
     };
     for (let m = 1; m <= 12; m++) {
@@ -403,7 +403,7 @@ function App() {
     setData(prev => ({
       ...prev,
       settings: {
-        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, deductions: [], allowances: [], bonuses: [], google_calendar_url: 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' }),
+        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, deductions: [], allowances: [], bonuses: [], google_calendar_url: 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' }),
         ...updates
       }
     }));
@@ -846,20 +846,24 @@ function App() {
                             const urlObj = new URL(finalUrl);
                             const cidVal = urlObj.searchParams.get('cid');
                             if (cidVal) {
-                              finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(cidVal)}&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0`;
+                              finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(cidVal)}&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0`;
                             }
                           } catch {
                             // ignore
                           }
                         } else if (finalUrl && !finalUrl.startsWith('http')) {
-                          finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(finalUrl)}&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0`;
+                          finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(finalUrl)}&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0`;
                         } else if (finalUrl && finalUrl.startsWith('http')) {
                           try {
                             const urlObj = new URL(finalUrl);
                             urlObj.searchParams.set('showTitle', '0');
                             urlObj.searchParams.set('showCalendars', '0');
                             urlObj.searchParams.set('showTz', '0');
-                            if (!urlObj.searchParams.getAll('src').includes('vi.vietnamese#holiday@group.v.calendar.google.com')) {
+                            const sources = urlObj.searchParams.getAll('src');
+                            if (!sources.includes('578s5hnkj9o8u4pg1sre0g83fk@group.calendar.google.com')) {
+                              urlObj.searchParams.append('src', '578s5hnkj9o8u4pg1sre0g83fk@group.calendar.google.com');
+                            }
+                            if (!sources.includes('vi.vietnamese#holiday@group.v.calendar.google.com')) {
                               urlObj.searchParams.append('src', 'vi.vietnamese#holiday@group.v.calendar.google.com');
                             }
                             finalUrl = urlObj.toString();
@@ -894,10 +898,10 @@ function App() {
                   </button>
                 </h3>
                 
-                {data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' ? (
+                {data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' ? (
                   <div style={{ position: 'relative', width: '100%', height: '300px', overflow: 'hidden', borderRadius: '8px' }}>
                     <iframe
-                      src={data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'}
+                      src={data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'}
                       style={{ border: '0', borderRadius: '8px', background: 'white', position: 'absolute', top: '0', left: '0' }}
                       width="100%"
                       height="340"
