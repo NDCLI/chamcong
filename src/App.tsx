@@ -172,6 +172,31 @@ const EditableCurrency = ({ value, onChange, className, style }: { value: number
   );
 };
 
+const getMergedCalendarUrl = (url?: string) => {
+  const defaultUrl = 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0';
+  let targetUrl = url || defaultUrl;
+  
+  try {
+    if (targetUrl && !targetUrl.startsWith('http')) {
+      targetUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(targetUrl)}&ctz=Asia%2FHo_Chi_Minh`;
+    }
+    const urlObj = new URL(targetUrl);
+    const sources = urlObj.searchParams.getAll('src');
+    if (!sources.includes('578s5hnkj9o8u4pg1sre0g83fk@group.calendar.google.com')) {
+      urlObj.searchParams.append('src', '578s5hnkj9o8u4pg1sre0g83fk@group.calendar.google.com');
+    }
+    if (!sources.includes('vi.vietnamese#holiday@group.v.calendar.google.com')) {
+      urlObj.searchParams.append('src', 'vi.vietnamese#holiday@group.v.calendar.google.com');
+    }
+    urlObj.searchParams.set('showTitle', '0');
+    urlObj.searchParams.set('showCalendars', '0');
+    urlObj.searchParams.set('showTz', '0');
+    return urlObj.toString();
+  } catch {
+    return targetUrl;
+  }
+};
+
 function App() {
   const getInitialMonth = () => {
     const today = new Date();
@@ -898,52 +923,22 @@ function App() {
                   </button>
                 </h3>
                 
-                {data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' ? (
-                  <div style={{ position: 'relative', width: '100%', height: '300px', overflow: 'hidden', borderRadius: '8px' }}>
-                    <iframe
-                      src={data.settings?.google_calendar_url || 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'}
-                      style={{ border: '0', borderRadius: '8px', background: 'white', position: 'absolute', top: '0', left: '0' }}
-                      width="100%"
-                      height="340"
-                      frameBorder="0"
-                      scrolling="no"
-                      title="Google Calendar"
-                    />
-                  </div>
-                ) : (
-                  <div className="calendar-setup-placeholder" style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    padding: '30px 20px', 
-                    background: 'rgba(255, 255, 255, 0.02)', 
-                    borderRadius: '8px',
-                    border: '1px dashed var(--border-color)',
-                    textAlign: 'center'
-                  }}>
-                    <CalendarDays size={32} style={{ color: 'var(--text-muted)', marginBottom: '8px' }} />
-                    <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: 'var(--text-muted)' }}>
-                      Chưa cấu hình lịch Google Calendar. Bạn có thể nhúng lịch cá nhân hoặc lịch công việc vào đây.
-                    </p>
-                    <button 
-                      onClick={() => {
-                        const url = window.prompt("Nhập link nhúng Google Calendar hoặc Calendar ID (Email của bạn):");
-                        if (url) {
-                          let finalUrl = url.trim();
-                          if (!finalUrl.startsWith('http')) {
-                            finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(finalUrl)}&ctz=Asia%2FHo_Chi_Minh`;
-                          }
-                          updateSettings({ google_calendar_url: finalUrl });
-                        }
-                      }}
-                      className="btn btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: '12px' }}
-                    >
-                      Kết nối lịch ngay
-                    </button>
-                  </div>
-                )}
+                {(() => {
+                  const mergedUrl = getMergedCalendarUrl(data.settings?.google_calendar_url);
+                  return (
+                    <div style={{ position: 'relative', width: '100%', height: '300px', overflow: 'hidden', borderRadius: '8px' }}>
+                      <iframe
+                        src={mergedUrl}
+                        style={{ border: '0', borderRadius: '8px', background: 'white', position: 'absolute', top: '0', left: '0' }}
+                        width="100%"
+                        height="340"
+                        frameBorder="0"
+                        scrolling="no"
+                        title="Google Calendar"
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
