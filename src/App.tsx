@@ -275,6 +275,13 @@ function App() {
   };
 
   const [user, setUser] = useState<User | null>(null);
+  const [guestName, setGuestName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('salary_guest_name') || '';
+    }
+    return '';
+  });
+  const [guestInputName, setGuestInputName] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [authIdentifier, setAuthIdentifier] = useState('');
@@ -986,7 +993,7 @@ function App() {
     return <div className="app-container"><div className="modal-content"><h2>Đang tải tài khoản...</h2></div></div>;
   }
 
-  if (!user) {
+  if (!user && !guestName) {
     if (isLoginPage) {
       return (
         <div className="app-container auth-only-page">
@@ -1067,13 +1074,67 @@ function App() {
             <div>• Đồng bộ dữ liệu qua tài khoản đăng nhập.</div>
           </div>
 
-          <div className="hero-card">
-            <h2>Giữ quyền kiểm soát lương của bạn</h2>
-            <p>Nhập số liệu nhanh, theo dõi trả lương theo tháng, và xem ngay tiền thực nhận sau khấu trừ BHXH/BHYT/BHTN/Thuế TNCN.</p>
-            <div className="hero-buttons">
-              <button className="btn btn-hero" onClick={openLoginPage}>
-                Đăng nhập ngay
-              </button>
+          <div className="hero-card-container" style={{ display: 'flex', gap: '20px', marginTop: '30px', flexWrap: 'wrap' }}>
+            <div className="hero-card" style={{ flex: 1, minWidth: '280px' }}>
+              <h2>Đăng nhập đầy đủ</h2>
+              <p>Sử dụng tài khoản Email/SĐT để bảo mật dữ liệu tốt nhất.</p>
+              <div className="hero-buttons">
+                <button className="btn btn-hero" onClick={openLoginPage}>
+                  Đăng nhập / Đăng ký
+                </button>
+              </div>
+            </div>
+
+            <div className="hero-card" style={{ flex: 1, minWidth: '280px' }}>
+              <h2>Bản nhanh (Không cần TK)</h2>
+              <p>Chỉ cần nhập Tên của bạn để bắt đầu. Dữ liệu sẽ đồng bộ tự động theo Tên này.</p>
+              <div className="hero-buttons" style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  type="text" 
+                  placeholder="Nhập tên của bạn..." 
+                  value={guestInputName}
+                  onChange={e => setGuestInputName(e.target.value)}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #ccc' }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && guestInputName.trim()) {
+                      const name = guestInputName.trim();
+                      localStorage.setItem('salary_guest_name', name);
+                      setGuestName(name);
+                      setAutoSyncCode(name);
+                      setSyncCode(name);
+                      setSyncStatus('Đang tải dữ liệu của bạn...');
+                      syncFromCloud(name).then(d => {
+                        if (d) {
+                          setData(d as AppData);
+                          setSyncStatus('✅ Đã tải dữ liệu từ Cloud.');
+                        } else {
+                          setSyncStatus('✅ Bắt đầu với dữ liệu mới.');
+                        }
+                      }).catch(() => setSyncStatus('✅ Bắt đầu với dữ liệu mới.'));
+                    }
+                  }}
+                />
+                <button className="btn btn-primary" onClick={() => {
+                  if (guestInputName.trim()) {
+                    const name = guestInputName.trim();
+                    localStorage.setItem('salary_guest_name', name);
+                    setGuestName(name);
+                    setAutoSyncCode(name);
+                    setSyncCode(name);
+                    setSyncStatus('Đang tải dữ liệu của bạn...');
+                    syncFromCloud(name).then(d => {
+                      if (d) {
+                        setData(d as AppData);
+                        setSyncStatus('✅ Đã tải dữ liệu từ Cloud.');
+                      } else {
+                        setSyncStatus('✅ Bắt đầu với dữ liệu mới.');
+                      }
+                    }).catch(() => setSyncStatus('✅ Bắt đầu với dữ liệu mới.'));
+                  }
+                }}>
+                  Vào App
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1171,10 +1232,10 @@ function App() {
             <button
               className="account-fab"
               onClick={() => setShowAccountMenu(!showAccountMenu)}
-              title={user.email || 'Tài khoản'}
+              title={user?.email || guestName || 'Tài khoản'}
             >
               <UserIcon size={14} />
-              <span>{user.displayName || user.email?.split('@')[0] || 'Tài khoản'}</span>
+              <span>{user?.displayName || user?.email?.split('@')[0] || guestName || 'Tài khoản'}</span>
               <ChevronDown size={11} strokeWidth={3} style={{ transition: 'transform 0.2s ease', transform: showAccountMenu ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </button>
 
@@ -1183,68 +1244,80 @@ function App() {
                 <div className="account-menu-header">
                   <div className="account-menu-avatar"><UserIcon size={18} /></div>
                   <div>
-                    <div className="account-menu-name">{user.displayName || 'Người dùng'}</div>
-                    <div className="account-menu-email">{user.email}</div>
+                    <div className="account-menu-name">{user?.displayName || guestName || 'Người dùng'}</div>
+                    <div className="account-menu-email">{user?.email || 'Bản dùng nhanh'}</div>
                   </div>
                 </div>
 
-                <div className="account-menu-section">
-                  <label className="account-menu-label"><UserIcon size={11} /> Đổi tên hiển thị</label>
-                  <div className="account-menu-row">
-                    <input
-                      type="text"
-                      placeholder="Tên hiển thị mới"
-                      value={profileDisplayName}
-                      onChange={e => setProfileDisplayName(e.target.value)}
-                      className="account-menu-input"
-                    />
-                    <button className="account-menu-btn primary" onClick={() => { void handleSaveDisplayName(); }}>Lưu</button>
-                  </div>
-                </div>
-
-                <div className="account-menu-section">
-                  <label className="account-menu-label"><KeyRound size={11} /> Đổi mật khẩu</label>
-                  {!showPasswordForm ? (
-                    <button className="account-menu-btn secondary" onClick={() => setShowPasswordForm(true)}>Đổi mật khẩu</button>
-                  ) : (
-                    <>
-                      <input
-                        type="password"
-                        placeholder="Mật khẩu hiện tại"
-                        value={passwordCurrent}
-                        onChange={e => setPasswordCurrent(e.target.value)}
-                        className="account-menu-input"
-                        style={{ marginBottom: '6px' }}
-                      />
-                      <input
-                        type="password"
-                        placeholder="Mật khẩu mới"
-                        value={passwordNew}
-                        onChange={e => setPasswordNew(e.target.value)}
-                        className="account-menu-input"
-                        style={{ marginBottom: '6px' }}
-                      />
-                      <input
-                        type="password"
-                        placeholder="Xác nhận mật khẩu mới"
-                        value={passwordConfirm}
-                        onChange={e => setPasswordConfirm(e.target.value)}
-                        className="account-menu-input"
-                        style={{ marginBottom: '6px' }}
-                      />
-                      {passwordError && <div className="account-menu-error" style={{ marginBottom: '6px' }}><XCircle size={11} /> {passwordError}</div>}
-                      {passwordSuccess && <div className="account-menu-success" style={{ marginBottom: '6px' }}><CheckCircle size={11} /> {passwordSuccess}</div>}
-                      <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
-                        <button className="account-menu-btn secondary" style={{ flex: 1, margin: 0 }} onClick={() => { void handleChangePassword(); }}>Lưu</button>
-                        <button className="account-menu-btn" style={{ flex: 1, background: 'rgba(255,255,255,0.1)', color: '#fff' }} onClick={() => { setShowPasswordForm(false); setPasswordError(''); setPasswordSuccess(''); }}>Hủy</button>
+                {user && (
+                  <>
+                    <div className="account-menu-section">
+                      <label className="account-menu-label"><UserIcon size={11} /> Đổi tên hiển thị</label>
+                      <div className="account-menu-row">
+                        <input
+                          type="text"
+                          placeholder="Tên hiển thị mới"
+                          value={profileDisplayName}
+                          onChange={e => setProfileDisplayName(e.target.value)}
+                          className="account-menu-input"
+                        />
+                        <button className="account-menu-btn primary" onClick={() => { void handleSaveDisplayName(); }}>Lưu</button>
                       </div>
-                    </>
-                  )}
-                </div>
+                    </div>
+
+                    <div className="account-menu-section">
+                      <label className="account-menu-label"><KeyRound size={11} /> Đổi mật khẩu</label>
+                      {!showPasswordForm ? (
+                        <button className="account-menu-btn secondary" onClick={() => setShowPasswordForm(true)}>Đổi mật khẩu</button>
+                      ) : (
+                        <>
+                          <input
+                            type="password"
+                            placeholder="Mật khẩu hiện tại"
+                            value={passwordCurrent}
+                            onChange={e => setPasswordCurrent(e.target.value)}
+                            className="account-menu-input"
+                            style={{ marginBottom: '6px' }}
+                          />
+                          <input
+                            type="password"
+                            placeholder="Mật khẩu mới"
+                            value={passwordNew}
+                            onChange={e => setPasswordNew(e.target.value)}
+                            className="account-menu-input"
+                            style={{ marginBottom: '6px' }}
+                          />
+                          <input
+                            type="password"
+                            placeholder="Xác nhận mật khẩu mới"
+                            value={passwordConfirm}
+                            onChange={e => setPasswordConfirm(e.target.value)}
+                            className="account-menu-input"
+                            style={{ marginBottom: '6px' }}
+                          />
+                          {passwordError && <div className="account-menu-error" style={{ marginBottom: '6px' }}><XCircle size={11} /> {passwordError}</div>}
+                          {passwordSuccess && <div className="account-menu-success" style={{ marginBottom: '6px' }}><CheckCircle size={11} /> {passwordSuccess}</div>}
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
+                            <button className="account-menu-btn secondary" style={{ flex: 1, margin: 0 }} onClick={() => { void handleChangePassword(); }}>Lưu</button>
+                            <button className="account-menu-btn" style={{ flex: 1, background: 'rgba(255,255,255,0.1)', color: '#fff' }} onClick={() => { setShowPasswordForm(false); setPasswordError(''); setPasswordSuccess(''); }}>Hủy</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <div className="account-menu-divider" />
-                <button className="account-menu-logout" onClick={() => { void logoutUser(); setShowAccountMenu(false); }}>
-                  <LogOut size={13} /> Đăng xuất
+                <button className="account-menu-logout" onClick={() => { 
+                  if (user) {
+                    void logoutUser(); 
+                  } else {
+                    localStorage.removeItem('salary_guest_name');
+                    setGuestName('');
+                  }
+                  setShowAccountMenu(false); 
+                }}>
+                  <LogOut size={13} /> {user ? 'Đăng xuất' : 'Thoát bản nhanh'}
                 </button>
               </div>
             )}
