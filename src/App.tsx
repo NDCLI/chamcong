@@ -1086,7 +1086,7 @@ function App() {
             </div>
 
             <div className="hero-card" style={{ flex: 1, minWidth: '280px' }}>
-              <h2>Bản nhanh (Không cần TK)</h2>
+              <h2>Trải nghiệm ngay</h2>
               <p>Chỉ cần nhập Tên của bạn để bắt đầu. Dữ liệu sẽ đồng bộ tự động theo Tên này.</p>
               <div className="hero-buttons" style={{ display: 'flex', gap: '8px' }}>
                 <input 
@@ -1245,7 +1245,7 @@ function App() {
                   <div className="account-menu-avatar"><UserIcon size={18} /></div>
                   <div>
                     <div className="account-menu-name">{user?.displayName || guestName || 'Người dùng'}</div>
-                    <div className="account-menu-email">{user?.email || 'Bản dùng nhanh'}</div>
+                    <div className="account-menu-email">{user?.email || 'Tài khoản tạm'}</div>
                   </div>
                 </div>
 
@@ -1317,7 +1317,7 @@ function App() {
                   }
                   setShowAccountMenu(false); 
                 }}>
-                  <LogOut size={13} /> {user ? 'Đăng xuất' : 'Thoát bản nhanh'}
+                  <LogOut size={13} /> {user ? 'Đăng xuất' : 'Thoát'}
                 </button>
               </div>
             )}
