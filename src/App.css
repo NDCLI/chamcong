@@ -512,11 +512,17 @@ body::before {
   text-transform: uppercase;
 }
 .landing-hero h1 {
-  margin: 0 0 22px;
-  font-size: clamp(3rem, 5vw, 4.6rem);
-  line-height: 0.95;
-  color: #f8fbff;
-  text-shadow: 0 26px 80px rgba(34, 27, 74, 0.18);
+  margin: 0 0 24px;
+  font-size: clamp(2.8rem, 6vw, 4.2rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #ffffff 0%, #a78bfa 50%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 12px 24px rgba(167, 139, 250, 0.25));
 }
 .landing-description {
   margin: 0 0 34px;
