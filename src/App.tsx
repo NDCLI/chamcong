@@ -1074,27 +1074,29 @@ function App() {
             <div>• Đồng bộ dữ liệu qua tài khoản đăng nhập.</div>
           </div>
 
-          <div className="hero-card-container" style={{ display: 'flex', gap: '20px', marginTop: '30px', flexWrap: 'wrap' }}>
-            <div className="hero-card" style={{ flex: 1, minWidth: '280px' }}>
-              <h2>Đăng nhập đầy đủ</h2>
-              <p>Sử dụng tài khoản Email/SĐT để bảo mật dữ liệu tốt nhất.</p>
-              <div className="hero-buttons">
-                <button className="btn btn-hero" onClick={openLoginPage}>
-                  Đăng nhập / Đăng ký
-                </button>
-              </div>
-            </div>
-
-            <div className="hero-card" style={{ flex: 1, minWidth: '280px' }}>
-              <h2>Trải nghiệm ngay</h2>
-              <p>Chỉ cần nhập Tên của bạn để bắt đầu. Dữ liệu sẽ đồng bộ tự động theo Tên này.</p>
-              <div className="hero-buttons" style={{ display: 'flex', gap: '8px' }}>
+          <div className="hero-card-container" style={{ display: 'flex', gap: '24px', marginTop: '40px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {/* Primary Card - Trải nghiệm ngay */}
+            <div className="hero-card premium-card" style={{ flex: '1 1 320px', maxWidth: '400px', position: 'relative', overflow: 'hidden', padding: '36px 32px' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(90deg, #4ade80, #3b82f6)' }}></div>
+              <h2 style={{ fontSize: '1.8rem', marginBottom: '12px', background: 'linear-gradient(to right, #4ade80, #2dd4bf)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Trải nghiệm ngay
+              </h2>
+              <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginBottom: '24px', lineHeight: 1.6 }}>
+                Không cần tạo tài khoản. Chỉ cần nhập tên của bạn để bắt đầu tính lương và tự động đồng bộ.
+              </p>
+              <div className="hero-buttons" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <input 
                   type="text" 
                   placeholder="Nhập tên của bạn..." 
                   value={guestInputName}
                   onChange={e => setGuestInputName(e.target.value)}
-                  style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #ccc' }}
+                  style={{ 
+                    width: '100%', padding: '14px 18px', borderRadius: '12px', 
+                    border: '1px solid rgba(74, 222, 128, 0.3)', background: 'rgba(15, 23, 42, 0.6)', 
+                    color: '#fff', fontSize: '1rem', outline: 'none', transition: 'all 0.3s'
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#4ade80'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(74, 222, 128, 0.3)'}
                   onKeyDown={e => {
                     if (e.key === 'Enter' && guestInputName.trim()) {
                       const name = guestInputName.trim();
@@ -1114,7 +1116,17 @@ function App() {
                     }
                   }}
                 />
-                <button className="btn btn-primary" onClick={() => {
+                <button 
+                  className="btn" 
+                  style={{ 
+                    width: '100%', padding: '14px', borderRadius: '12px', 
+                    background: 'linear-gradient(135deg, #22c55e, #10b981)', color: '#fff', 
+                    fontSize: '1.05rem', fontWeight: 700, border: 'none', cursor: 'pointer',
+                    boxShadow: '0 8px 20px rgba(16, 185, 129, 0.25)', transition: 'transform 0.2s, box-shadow 0.2s'
+                  }}
+                  onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  onMouseOut={e => e.currentTarget.style.transform = 'none'}
+                  onClick={() => {
                   if (guestInputName.trim()) {
                     const name = guestInputName.trim();
                     localStorage.setItem('salary_guest_name', name);
@@ -1132,7 +1144,31 @@ function App() {
                     }).catch(() => setSyncStatus('✅ Bắt đầu với dữ liệu mới.'));
                   }
                 }}>
-                  Vào App
+                  Vào App Ngay
+                </button>
+              </div>
+            </div>
+
+            {/* Secondary Card - Đăng nhập đầy đủ */}
+            <div className="hero-card standard-card" style={{ flex: '1 1 320px', maxWidth: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '36px 32px' }}>
+              <h2 style={{ fontSize: '1.5rem', marginBottom: '12px', color: '#e2e8f0' }}>Đăng nhập tài khoản</h2>
+              <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginBottom: '24px', lineHeight: 1.6 }}>
+                Lưu trữ dữ liệu an toàn lâu dài với tài khoản Email hoặc số điện thoại. Bảo mật tuyệt đối.
+              </p>
+              <div className="hero-buttons">
+                <button 
+                  className="btn" 
+                  onClick={openLoginPage}
+                  style={{ 
+                    width: '100%', padding: '14px', borderRadius: '12px', 
+                    background: 'rgba(255, 255, 255, 0.08)', color: '#fff', 
+                    fontSize: '1rem', fontWeight: 600, border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.transform = 'none'; }}
+                >
+                  Đăng nhập / Đăng ký
                 </button>
               </div>
             </div>
