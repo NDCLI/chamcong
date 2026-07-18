@@ -13,6 +13,7 @@
     "@vercel/analytics": "^2.0.1",
     "firebase": "^12.12.1",
     "lucide-react": "^1.16.0",
+    "posthog-js": "^1.404.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

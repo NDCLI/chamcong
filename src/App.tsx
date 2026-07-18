@@ -60,6 +60,7 @@ interface AppData {
   dependents: number;
   months: Record<string, MonthData>;
   settings?: AppSettings;
+  lastUpdated?: number;
 }
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
@@ -264,7 +265,8 @@ function App() {
         allowances: [],
         bonuses: [],
         google_calendar_url: 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'
-      }
+      },
+      lastUpdated: Date.now()
     };
     for (let m = 1; m <= 12; m++) {
       initData.months[m] = { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
@@ -325,6 +327,23 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const forceBlur = () => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') forceBlur();
+    };
+    window.addEventListener('beforeunload', forceBlur);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', forceBlur);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
     const unsub = watchAuthState((nextUser) => {
       setUser(nextUser);
       setProfileDisplayName(nextUser?.displayName || '');
@@ -352,9 +371,19 @@ function App() {
         setSyncStatus('Đang tải dữ liệu tài khoản...');
         const cloudData = await syncAccountFromCloud(user.uid);
         if (cloudData) {
-          setData(cloudData as AppData);
-          localStorage.setItem(storageDataKey(user.uid), JSON.stringify(cloudData));
-          setSyncStatus('✅ Đã đồng bộ dữ liệu theo tài khoản.');
+          const cloudTime = cloudData.lastUpdated || 0;
+          const localTime = localData.lastUpdated || 0;
+          
+          if (cloudTime >= localTime) {
+            setData(cloudData as AppData);
+            localStorage.setItem(storageDataKey(user.uid), JSON.stringify(cloudData));
+            setSyncStatus('✅ Đã đồng bộ dữ liệu theo tài khoản.');
+          } else {
+            setData(localData);
+            setSyncStatus('⏳ Dữ liệu trên máy mới hơn, đang đồng bộ lên Cloud...');
+            await syncAccountToCloud(user.uid, localData);
+            setSyncStatus('✅ Đã đồng bộ dữ liệu máy này lên Cloud.');
+          }
         } else {
           setData(localData);
           await syncAccountToCloud(user.uid, localData);
@@ -419,7 +448,7 @@ function App() {
   const updateData = (updates: Partial<AppData>) => {
     isUserInputRef.current = true;
     if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
-    setData(prev => ({ ...prev, ...updates }));
+    setData(prev => ({ ...prev, ...updates, lastUpdated: Date.now() }));
   };
 
   const updateSettings = (updates: Partial<AppSettings>) => {
@@ -430,7 +459,8 @@ function App() {
       settings: {
         ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, deductions: [], allowances: [], bonuses: [], google_calendar_url: 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' }),
         ...updates
-      }
+      },
+      lastUpdated: Date.now()
     }));
   };
 
@@ -454,7 +484,8 @@ function App() {
               [dateIso]: newOT
             }
           }
-        }
+        },
+        lastUpdated: Date.now()
       };
     });
   };
@@ -469,7 +500,8 @@ function App() {
         months: {
           ...prev.months,
           [month]: { ...monthData, other: value }
-        }
+        },
+        lastUpdated: Date.now()
       };
     });
   };
@@ -487,7 +519,8 @@ function App() {
         months: {
           ...prev.months,
           [month]: { ...monthData, bonusAmounts: newAmounts }
-        }
+        },
+        lastUpdated: Date.now()
       };
     });
   };
@@ -503,7 +536,8 @@ function App() {
         months: {
           ...prev.months,
           [month]: { ...monthData, bonuses: [...currentBonuses, { name: '', amount: 0 }] }
-        }
+        },
+        lastUpdated: Date.now()
       };
     });
   };
@@ -518,7 +552,8 @@ function App() {
         months: {
           ...prev.months,
           [month]: { ...monthData, bonuses }
-        }
+        },
+        lastUpdated: Date.now()
       };
     });
   };
