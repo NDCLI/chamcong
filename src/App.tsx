@@ -75,6 +75,35 @@ const getLocalDateStr = (date: Date) => {
 
 const storageDataKey = (uid?: string | null) => uid ? `salary_data_${uid}` : 'salary_data';
 const storageSyncKey = (uid?: string | null) => uid ? `salary_sync_code_${uid}` : 'salary_sync_code';
+
+const isStoredAppData = (value: unknown): value is AppData => (
+  typeof value === 'object'
+  && value !== null
+  && 'months' in value
+  && typeof value.months === 'object'
+  && value.months !== null
+);
+
+const hasMeaningfulData = (appData: AppData) => {
+  if (appData.lcb !== 0 || appData.dependents !== 0 || appData.profile_name !== 'Mặc định') return true;
+
+  if (Object.values(appData.months).some((month) => (
+    month.other !== 0
+    || (month.bonusAmounts || []).some((amount) => amount !== 0)
+    || (month.bonuses || []).some((bonus) => bonus.name.trim() || bonus.amount !== 0)
+    || Object.values(month.ot).some((hours) => hours.some((hour) => hour !== 0))
+  ))) return true;
+
+  const settings = appData.settings;
+  return Boolean(
+    settings && (
+      (settings.allowances || []).length
+      || (settings.bonuses || []).length
+      || (settings.deductions || []).length
+      || settings.other_deduction !== 0
+    )
+  );
+};
 // EditableCell component to handle decimal inputs properly
 const EditableCell = ({ value, onChange, rowIndex, colIndex }: { value: number | string, onChange: (val: string) => void, rowIndex: number, colIndex: number }) => {
   const [localValue, setLocalValue] = useState<string>(value ? String(value) : '');
@@ -313,7 +342,7 @@ function App() {
   const [syncStatus, setSyncStatus] = useState('');
   const [autoSyncCode, setAutoSyncCode] = useState('');
   const isUserInputRef = useRef(false);
-  const accountHydratedRef = useRef(false);
+  const [accountHydrated, setAccountHydrated] = useState(false);
   const getCurrentTimeString = () => {
     const now = new Date();
     const wd = WEEKDAYS[now.getDay()];
@@ -360,15 +389,20 @@ function App() {
   }, []);
 
   useEffect(() => {
-    accountHydratedRef.current = false;
+    setAccountHydrated(false);
     if (!user) return;
 
     const loadAccountData = async () => {
       const saved = localStorage.getItem(storageDataKey(user.uid));
       let localData = createDefaultData();
+      let hasSavedLocalData = false;
       if (saved) {
         try {
-          localData = JSON.parse(saved);
+          const parsedData: unknown = JSON.parse(saved);
+          if (isStoredAppData(parsedData)) {
+            localData = parsedData;
+            hasSavedLocalData = true;
+          }
         } catch {
           localData = createDefaultData();
         }
@@ -378,18 +412,22 @@ function App() {
         setSyncStatus('Đang tải dữ liệu tài khoản...');
         const cloudData = await syncAccountFromCloud(user.uid);
         if (cloudData) {
-          const cloudTime = cloudData.lastUpdated || 0;
-          const localTime = localData.lastUpdated || 0;
+          const cloudTime = Number(cloudData.lastUpdated) || 0;
+          const localTime = Number(localData.lastUpdated) || 0;
           
-          if (cloudTime >= localTime) {
-            setData(cloudData as AppData);
-            localStorage.setItem(storageDataKey(user.uid), JSON.stringify(cloudData));
-            setSyncStatus('✅ Đã đồng bộ dữ liệu theo tài khoản.');
-          } else {
+          if (hasSavedLocalData && hasMeaningfulData(localData) && cloudTime > 0 && localTime > cloudTime) {
             setData(localData);
             setSyncStatus('⏳ Dữ liệu trên máy mới hơn, đang đồng bộ lên Cloud...');
-            await syncAccountToCloud(user.uid, localData);
-            setSyncStatus('✅ Đã đồng bộ dữ liệu máy này lên Cloud.');
+            const wasUploaded = await syncAccountToCloud(user.uid, localData);
+            setSyncStatus(wasUploaded
+              ? '✅ Đã đồng bộ dữ liệu máy này lên Cloud.'
+              : '✅ Cloud có dữ liệu mới hơn, giữ nguyên dữ liệu Cloud.'
+            );
+          } else {
+            const cloudAccountData = cloudData as AppData;
+            setData(cloudAccountData);
+            localStorage.setItem(storageDataKey(user.uid), JSON.stringify(cloudAccountData));
+            setSyncStatus('✅ Đã đồng bộ dữ liệu theo tài khoản.');
           }
         } else {
           setData(localData);
@@ -401,7 +439,7 @@ function App() {
         setData(localData);
         setSyncStatus('❌ Không tải được dữ liệu tài khoản, đang dùng dữ liệu máy này.');
       } finally {
-        accountHydratedRef.current = true;
+        setAccountHydrated(true);
       }
     };
 
@@ -413,15 +451,18 @@ function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || !accountHydratedRef.current) return;
+    if (!user || !accountHydrated) return;
     localStorage.setItem(storageDataKey(user.uid), JSON.stringify(data));
 
     setSyncStatus('Đang tự động đồng bộ...');
 
     const timer = setTimeout(async () => {
       try {
-        await syncAccountToCloud(user.uid, data);
-        setSyncStatus('✅ Đã tự động đồng bộ theo tài khoản.');
+        const wasUploaded = await syncAccountToCloud(user.uid, data);
+        setSyncStatus(wasUploaded
+          ? '✅ Đã tự động đồng bộ theo tài khoản.'
+          : '✅ Cloud có dữ liệu mới hơn, giữ nguyên dữ liệu Cloud.'
+        );
       } catch (e) {
         console.error('Account auto sync error:', e);
         setSyncStatus('❌ Tự động đồng bộ tài khoản thất bại.');
@@ -429,7 +470,7 @@ function App() {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [data, user]);
+  }, [accountHydrated, data, user]);
 
   useEffect(() => {
     if (!autoSyncCode.trim() || !isUserInputRef.current) return;

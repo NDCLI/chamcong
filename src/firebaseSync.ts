@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, runTransaction } from 'firebase/firestore';
 import {
   getAuth,
   onAuthStateChanged,
@@ -157,11 +157,24 @@ export const syncFromCloud = async (syncCode: string) => {
   throw new Error('Không tìm thấy dữ liệu với Mã đồng bộ này!');
 };
 
-export const syncAccountToCloud = async (uid: string, data: any) => {
+export const syncAccountToCloud = async (uid: string, data: any): Promise<boolean> => {
   if (!uid) throw new Error('UID không hợp lệ.');
-  await setDoc(doc(db, 'salary_accounts', uid), {
-    data,
-    updatedAt: new Date().toISOString()
+  const accountRef = doc(db, 'salary_accounts', uid);
+  const incomingLastUpdated = Number(data?.lastUpdated) || 0;
+
+  return runTransaction(db, async (transaction) => {
+    const current = await transaction.get(accountRef);
+    const currentLastUpdated = Number(current.data()?.data?.lastUpdated) || 0;
+
+    if (current.exists() && currentLastUpdated > incomingLastUpdated) {
+      return false;
+    }
+
+    transaction.set(accountRef, {
+      data,
+      updatedAt: new Date().toISOString()
+    });
+    return true;
   });
 };
 
