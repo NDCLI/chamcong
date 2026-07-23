@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday } from './logic'
+import type { AppData, AppSettings, Allowance } from './logic'
 import {
   syncToCloud,
   syncFromCloud,
@@ -24,44 +25,6 @@ import {
   Upload, Download, X, ChevronLeft, ChevronRight, ChevronDown
 } from 'lucide-react'
 
-
-interface MonthOTData {
-  [dateIso: string]: number[]; // [150, 200, 300, late]
-}
-
-interface MonthData {
-  other: number;
-  ot: MonthOTData;
-  bonusAmounts?: number[];
-  bonuses?: Allowance[];
-}
-
-interface Allowance {
-  name: string;
-  amount: number;
-}
-
-interface AppSettings {
-  bhxh_pct: number;
-  bhyt_pct: number;
-  bhtn_pct: number;
-  cong_doan: number;
-  other_deduction: number;
-  deductions?: Allowance[];
-  allowances: Allowance[];
-  bonuses: Allowance[];
-  google_calendar_url?: string;
-}
-
-interface AppData {
-  profile_name: string;
-  year: number;
-  lcb: number;
-  dependents: number;
-  months: Record<string, MonthData>;
-  settings?: AppSettings;
-  lastUpdated?: number;
-}
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
@@ -334,7 +297,7 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
 
-  const [data, setData] = useState<AppData>(createDefaultData());
+  const [data, setData] = useState<AppData>(() => createDefaultData());
 
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -389,6 +352,8 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Khóa auto-sync trong lúc tải dữ liệu tài khoản để tránh ghi đè Cloud (có chủ đích).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAccountHydrated(false);
     if (!user) return;
 
@@ -454,6 +419,8 @@ function App() {
     if (!user || !accountHydrated) return;
     localStorage.setItem(storageDataKey(user.uid), JSON.stringify(data));
 
+    // Phản hồi UI tức thì trước khi debounce sync (có chủ đích).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSyncStatus('Đang tự động đồng bộ...');
 
     const timer = setTimeout(async () => {

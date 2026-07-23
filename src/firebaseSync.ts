@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, runTransaction } from 'firebase/firestore';
+import type { AppData } from './logic';
 import {
   getAuth,
   onAuthStateChanged,
@@ -43,7 +43,20 @@ export const initFirebase = () => {
 
 const app = initFirebase();
 const auth = getAuth(app);
-const db = getFirestore(app);
+
+// Firestore chỉ cần khi người dùng đồng bộ, nên tải động để giảm bundle tải trang đầu.
+type FirestoreModule = typeof import('firebase/firestore');
+let firestorePromise: Promise<{ db: import('firebase/firestore').Firestore; fs: FirestoreModule }> | null = null;
+
+const getFirestoreLazy = () => {
+  if (!firestorePromise) {
+    firestorePromise = import('firebase/firestore').then((fs) => ({
+      db: fs.getFirestore(app),
+      fs,
+    }));
+  }
+  return firestorePromise;
+};
 
 const formatPhoneNumber = (phoneNumber: string) => {
   const cleaned = phoneNumber.trim();
@@ -139,9 +152,10 @@ export const confirmLinkPhone = async (
   return linkWithCredential(auth.currentUser, credential);
 };
 
-export const syncToCloud = async (syncCode: string, data: any, ownerId?: string) => {
+export const syncToCloud = async (syncCode: string, data: AppData, ownerId?: string) => {
   if (!syncCode) throw new Error('Vui lòng nhập Mã đồng bộ!');
-  await setDoc(doc(db, 'salary_sync', syncCode), {
+  const { db, fs } = await getFirestoreLazy();
+  await fs.setDoc(fs.doc(db, 'salary_sync', syncCode), {
     data,
     ownerId: ownerId || null,
     updatedAt: new Date().toISOString()
@@ -150,19 +164,21 @@ export const syncToCloud = async (syncCode: string, data: any, ownerId?: string)
 
 export const syncFromCloud = async (syncCode: string) => {
   if (!syncCode) throw new Error('Vui lòng nhập Mã đồng bộ!');
-  const docSnap = await getDoc(doc(db, 'salary_sync', syncCode));
+  const { db, fs } = await getFirestoreLazy();
+  const docSnap = await fs.getDoc(fs.doc(db, 'salary_sync', syncCode));
   if (docSnap.exists()) {
     return docSnap.data().data;
   }
   throw new Error('Không tìm thấy dữ liệu với Mã đồng bộ này!');
 };
 
-export const syncAccountToCloud = async (uid: string, data: any): Promise<boolean> => {
+export const syncAccountToCloud = async (uid: string, data: AppData): Promise<boolean> => {
   if (!uid) throw new Error('UID không hợp lệ.');
-  const accountRef = doc(db, 'salary_accounts', uid);
+  const { db, fs } = await getFirestoreLazy();
+  const accountRef = fs.doc(db, 'salary_accounts', uid);
   const incomingLastUpdated = Number(data?.lastUpdated) || 0;
 
-  return runTransaction(db, async (transaction) => {
+  return fs.runTransaction(db, async (transaction) => {
     const current = await transaction.get(accountRef);
     const currentLastUpdated = Number(current.data()?.data?.lastUpdated) || 0;
 
@@ -180,7 +196,8 @@ export const syncAccountToCloud = async (uid: string, data: any): Promise<boolea
 
 export const syncAccountFromCloud = async (uid: string) => {
   if (!uid) throw new Error('UID không hợp lệ.');
-  const docSnap = await getDoc(doc(db, 'salary_accounts', uid));
+  const { db, fs } = await getFirestoreLazy();
+  const docSnap = await fs.getDoc(fs.doc(db, 'salary_accounts', uid));
   if (!docSnap.exists()) return null;
   return docSnap.data().data;
 };
