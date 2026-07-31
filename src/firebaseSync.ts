@@ -1,24 +1,6 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, runTransaction } from 'firebase/firestore';
-import {
-  getAuth,
-  onAuthStateChanged,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  updateProfile,
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-  updatePassword,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  PhoneAuthProvider,
-  linkWithCredential,
-  type ConfirmationResult,
-  type User
-} from 'firebase/auth';
+import type { FirebaseApp } from 'firebase/app';
+import type { Firestore } from 'firebase/firestore';
+import type { Auth, User, ConfirmationResult } from 'firebase/auth';
 
 export const FIREBASE_CONFIG = {
   apiKey: "AIzaSyC8GH_52CNpOBnYppvUN5d_PeKYo9Cw5uk",
@@ -29,21 +11,42 @@ export const FIREBASE_CONFIG = {
   appId: "1:840193563721:web:b870618c57f1fb7cecb398"
 };
 
-export const initFirebase = () => {
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
+
+export const initFirebase = async () => {
   try {
+    const { initializeApp, getApps, getApp } = await import('firebase/app');
     if (getApps().length === 0) {
-      return initializeApp(FIREBASE_CONFIG);
+      app = initializeApp(FIREBASE_CONFIG);
+    } else {
+      app = getApp();
     }
-    return getApp();
+    return app;
   } catch (error) {
     console.error("Firebase init error:", error);
     throw error;
   }
 };
 
-const app = initFirebase();
-const auth = getAuth(app);
-const db = getFirestore(app);
+const getAuthInstance = async () => {
+  if (!auth) {
+    if (!app) await initFirebase();
+    const { getAuth } = await import('firebase/auth');
+    auth = getAuth(app!);
+  }
+  return auth;
+};
+
+const getDbInstance = async () => {
+  if (!db) {
+    if (!app) await initFirebase();
+    const { getFirestore } = await import('firebase/firestore');
+    db = getFirestore(app!);
+  }
+  return db;
+};
 
 const formatPhoneNumber = (phoneNumber: string) => {
   const cleaned = phoneNumber.trim();
@@ -52,10 +55,18 @@ const formatPhoneNumber = (phoneNumber: string) => {
   return `+84${cleaned.replace(/^0+/, '')}`;
 };
 
-export const watchAuthState = (callback: (user: User | null) => void) => onAuthStateChanged(auth, callback);
+export const watchAuthState = (callback: (user: User | null) => void) => {
+  return getAuthInstance().then(authInstance => {
+    return import('firebase/auth').then(({ onAuthStateChanged }) => {
+      return onAuthStateChanged(authInstance, callback);
+    });
+  });
+};
 
 export const registerWithEmail = async (email: string, password: string, displayName?: string) => {
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
+  const authInstance = await getAuthInstance();
+  const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
+  const credential = await createUserWithEmailAndPassword(authInstance, email, password);
   if (displayName) {
     await updateProfile(credential.user, { displayName });
   }
@@ -63,38 +74,54 @@ export const registerWithEmail = async (email: string, password: string, display
 };
 
 export const loginWithEmail = async (email: string, password: string) => {
-  return signInWithEmailAndPassword(auth, email, password);
+  const authInstance = await getAuthInstance();
+  const { signInWithEmailAndPassword } = await import('firebase/auth');
+  return signInWithEmailAndPassword(authInstance, email, password);
 };
 
-export const logoutUser = async () => signOut(auth);
+export const logoutUser = async () => {
+  const authInstance = await getAuthInstance();
+  const { signOut } = await import('firebase/auth');
+  return signOut(authInstance);
+};
 
 export const sendVerifyEmail = async () => {
-  if (!auth.currentUser) throw new Error('Không có người dùng đang đăng nhập.');
-  return sendEmailVerification(auth.currentUser);
+  const authInstance = await getAuthInstance();
+  if (!authInstance.currentUser) throw new Error('Không có người dùng đang đăng nhập.');
+  const { sendEmailVerification } = await import('firebase/auth');
+  return sendEmailVerification(authInstance.currentUser);
 };
 
 export const resetPasswordByEmail = async (email: string) => {
-  return sendPasswordResetEmail(auth, email);
+  const authInstance = await getAuthInstance();
+  const { sendPasswordResetEmail } = await import('firebase/auth');
+  return sendPasswordResetEmail(authInstance, email);
 };
 
 export const updateDisplayNameProfile = async (displayName: string) => {
-  if (!auth.currentUser) throw new Error('Không có người dùng đang đăng nhập.');
-  await updateProfile(auth.currentUser, { displayName });
-  return auth.currentUser;
+  const authInstance = await getAuthInstance();
+  if (!authInstance.currentUser) throw new Error('Không có người dùng đang đăng nhập.');
+  const { updateProfile } = await import('firebase/auth');
+  await updateProfile(authInstance.currentUser, { displayName });
+  return authInstance.currentUser;
 };
 
 export const updateUserPassword = async (currentPassword: string, newPassword: string) => {
-  if (!auth.currentUser) throw new Error('Không có người dùng đang đăng nhập.');
-  const email = auth.currentUser.email;
+  const authInstance = await getAuthInstance();
+  if (!authInstance.currentUser) throw new Error('Không có người dùng đang đăng nhập.');
+  const email = authInstance.currentUser.email;
   if (!email) throw new Error('Không thể xác thực bằng email.');
+  const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import('firebase/auth');
   const credential = EmailAuthProvider.credential(email, currentPassword);
-  await reauthenticateWithCredential(auth.currentUser, credential);
-  await updatePassword(auth.currentUser, newPassword);
-  return auth.currentUser;
+  await reauthenticateWithCredential(authInstance.currentUser, credential);
+  await updatePassword(authInstance.currentUser, newPassword);
+  return authInstance.currentUser;
 };
 
-export const setupRecaptcha = (elementId: string, invisible = true) => {
-  return new RecaptchaVerifier(auth, elementId, {
+export const setupRecaptcha = async (elementId: string, invisible = true) => {
+  const authInstance = await getAuthInstance();
+  const { RecaptchaVerifier } = await import('firebase/auth');
+  return new RecaptchaVerifier(authInstance, elementId, {
     size: invisible ? 'invisible' : 'normal',
     callback: () => {},
     'expired-callback': () => {
@@ -105,10 +132,12 @@ export const setupRecaptcha = (elementId: string, invisible = true) => {
 
 export const sendPhoneOTP = async (
   phoneNumber: string,
-  recaptchaVerifier: RecaptchaVerifier
+  recaptchaVerifier: any
 ): Promise<ConfirmationResult> => {
+  const authInstance = await getAuthInstance();
+  const { signInWithPhoneNumber } = await import('firebase/auth');
   const formattedPhone = formatPhoneNumber(phoneNumber);
-  return signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier);
+  return signInWithPhoneNumber(authInstance, formattedPhone, recaptchaVerifier);
 };
 
 export const verifyPhoneOTP = async (
@@ -120,28 +149,34 @@ export const verifyPhoneOTP = async (
 
 export const linkPhoneToAccount = async (
   phoneNumber: string,
-  recaptchaVerifier: RecaptchaVerifier
+  recaptchaVerifier: any
 ) => {
-  if (!auth.currentUser) throw new Error('Bạn chưa đăng nhập.');
+  const authInstance = await getAuthInstance();
+  if (!authInstance.currentUser) throw new Error('Bạn chưa đăng nhập.');
+  const { signInWithPhoneNumber } = await import('firebase/auth');
   const formattedPhone = formatPhoneNumber(phoneNumber);
-  return signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier);
+  return signInWithPhoneNumber(authInstance, formattedPhone, recaptchaVerifier);
 };
 
 export const confirmLinkPhone = async (
   confirmationResult: ConfirmationResult,
   otpCode: string
 ) => {
-  if (!auth.currentUser) throw new Error('Bạn chưa đăng nhập.');
+  const authInstance = await getAuthInstance();
+  if (!authInstance.currentUser) throw new Error('Bạn chưa đăng nhập.');
+  const { PhoneAuthProvider, linkWithCredential } = await import('firebase/auth');
   const credential = PhoneAuthProvider.credential(
     confirmationResult.verificationId,
     otpCode
   );
-  return linkWithCredential(auth.currentUser, credential);
+  return linkWithCredential(authInstance.currentUser, credential);
 };
 
 export const syncToCloud = async (syncCode: string, data: any, ownerId?: string) => {
   if (!syncCode) throw new Error('Vui lòng nhập Mã đồng bộ!');
-  await setDoc(doc(db, 'salary_sync', syncCode), {
+  const dbInstance = await getDbInstance();
+  const { doc, setDoc } = await import('firebase/firestore');
+  await setDoc(doc(dbInstance, 'salary_sync', syncCode), {
     data,
     ownerId: ownerId || null,
     updatedAt: new Date().toISOString()
@@ -150,7 +185,9 @@ export const syncToCloud = async (syncCode: string, data: any, ownerId?: string)
 
 export const syncFromCloud = async (syncCode: string) => {
   if (!syncCode) throw new Error('Vui lòng nhập Mã đồng bộ!');
-  const docSnap = await getDoc(doc(db, 'salary_sync', syncCode));
+  const dbInstance = await getDbInstance();
+  const { doc, getDoc } = await import('firebase/firestore');
+  const docSnap = await getDoc(doc(dbInstance, 'salary_sync', syncCode));
   if (docSnap.exists()) {
     return docSnap.data().data;
   }
@@ -159,10 +196,12 @@ export const syncFromCloud = async (syncCode: string) => {
 
 export const syncAccountToCloud = async (uid: string, data: any): Promise<boolean> => {
   if (!uid) throw new Error('UID không hợp lệ.');
-  const accountRef = doc(db, 'salary_accounts', uid);
+  const dbInstance = await getDbInstance();
+  const { doc, runTransaction } = await import('firebase/firestore');
+  const accountRef = doc(dbInstance, 'salary_accounts', uid);
   const incomingLastUpdated = Number(data?.lastUpdated) || 0;
 
-  return runTransaction(db, async (transaction) => {
+  return runTransaction(dbInstance, async (transaction) => {
     const current = await transaction.get(accountRef);
     const currentLastUpdated = Number(current.data()?.data?.lastUpdated) || 0;
 
@@ -180,7 +219,9 @@ export const syncAccountToCloud = async (uid: string, data: any): Promise<boolea
 
 export const syncAccountFromCloud = async (uid: string) => {
   if (!uid) throw new Error('UID không hợp lệ.');
-  const docSnap = await getDoc(doc(db, 'salary_accounts', uid));
+  const dbInstance = await getDbInstance();
+  const { doc, getDoc } = await import('firebase/firestore');
+  const docSnap = await getDoc(doc(dbInstance, 'salary_accounts', uid));
   if (!docSnap.exists()) return null;
   return docSnap.data().data;
 };

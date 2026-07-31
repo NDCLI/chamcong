@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -8,10 +8,16 @@
     <meta name="theme-color" content="#ffffff" />
     <meta name="google-site-verification" content="s7W4iMdYGb4SwOmixL2_piBxENJ4h8-lkWcSjhopbpM" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Ứng dụng tính lương, chấm công và quản lý OT miễn phí" />
     <title>Bảng chấm công & tính lương</title>
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
+    <style>
+      #root{min-height:100vh;display:flex;align-items:center;justify-content:center}
+      .loading{color:#64748b;font-size:14px;font-family:system-ui,-apple-system,sans-serif}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="loading">Đang tải...</div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

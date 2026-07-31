@@ -311,7 +311,12 @@ function App() {
     return '';
   });
   const [guestInputName, setGuestInputName] = useState('');
-  const [authLoading, setAuthLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('has_firebase_session') === '1';
+    }
+    return true;
+  });
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [authIdentifier, setAuthIdentifier] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -380,12 +385,22 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const unsub = watchAuthState((nextUser) => {
+    let unsub: (() => void) | undefined;
+    watchAuthState((nextUser) => {
+      if (nextUser) {
+        localStorage.setItem('has_firebase_session', '1');
+      } else {
+        localStorage.removeItem('has_firebase_session');
+      }
       setUser(nextUser);
       setProfileDisplayName(nextUser?.displayName || '');
       setAuthLoading(false);
+    }).then((unsubscribe) => {
+      unsub = unsubscribe;
     });
-    return () => unsub();
+    return () => {
+      if (unsub) unsub();
+    };
   }, []);
 
   useEffect(() => {
