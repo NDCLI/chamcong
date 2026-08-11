@@ -2,6 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 import './App.css'
 import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday } from './logic'
+import type { AppData, AppSettings, Allowance, SyncStatus } from './types'
+import { DEFAULT_SETTINGS, WEEKDAYS } from './constants'
+import { storageDataKey, storageSyncKey, getLocalDateStr } from './storage'
+import { isStoredAppData, hasMeaningfulData, getMergedCalendarUrl, hashGuestCode, isValidPassphrase } from './helpers'
+import { EditableCell } from './components/EditableCell'
+import { EditableCurrency } from './components/EditableCurrency'
+import { Clock } from './components/Clock'
+import { SyncLoaderIcon } from './components/SyncLoaderIcon'
 import {
   syncToCloud,
   syncFromCloud,
@@ -24,208 +32,6 @@ import {
   Upload, Download, X, ChevronLeft, ChevronRight, ChevronDown
 } from 'lucide-react'
 
-
-interface MonthOTData {
-  [dateIso: string]: number[]; // [150, 200, 300, late]
-}
-
-interface MonthData {
-  other: number;
-  ot: MonthOTData;
-  bonusAmounts?: number[];
-  bonuses?: Allowance[];
-}
-
-interface Allowance {
-  name: string;
-  amount: number;
-}
-
-interface AppSettings {
-  bhxh_pct: number;
-  bhyt_pct: number;
-  bhtn_pct: number;
-  cong_doan: number;
-  other_deduction: number;
-  deductions?: Allowance[];
-  allowances: Allowance[];
-  bonuses: Allowance[];
-  google_calendar_url?: string;
-}
-
-interface AppData {
-  profile_name: string;
-  year: number;
-  lcb: number;
-  dependents: number;
-  months: Record<string, MonthData>;
-  settings?: AppSettings;
-  lastUpdated?: number;
-}
-
-const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-
-const getLocalDateStr = (date: Date) => {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
-
-
-const storageDataKey = (uid?: string | null) => uid ? `salary_data_${uid}` : 'salary_data';
-const storageSyncKey = (uid?: string | null) => uid ? `salary_sync_code_${uid}` : 'salary_sync_code';
-
-const isStoredAppData = (value: unknown): value is AppData => (
-  typeof value === 'object'
-  && value !== null
-  && 'months' in value
-  && typeof value.months === 'object'
-  && value.months !== null
-);
-
-const hasMeaningfulData = (appData: AppData) => {
-  if (appData.lcb !== 0 || appData.dependents !== 0 || appData.profile_name !== 'Mặc định') return true;
-
-  if (Object.values(appData.months).some((month) => (
-    month.other !== 0
-    || (month.bonusAmounts || []).some((amount) => amount !== 0)
-    || (month.bonuses || []).some((bonus) => bonus.name.trim() || bonus.amount !== 0)
-    || Object.values(month.ot).some((hours) => hours.some((hour) => hour !== 0))
-  ))) return true;
-
-  const settings = appData.settings;
-  return Boolean(
-    settings && (
-      (settings.allowances || []).length
-      || (settings.bonuses || []).length
-      || (settings.deductions || []).length
-      || settings.other_deduction !== 0
-    )
-  );
-};
-// EditableCell component to handle decimal inputs properly
-const EditableCell = ({ value, onChange, rowIndex, colIndex }: { value: number | string, onChange: (val: string) => void, rowIndex: number, colIndex: number }) => {
-  const [localValue, setLocalValue] = useState<string>(value ? String(value) : '');
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalValue(value ? String(value) : '');
-  }, [value]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalValue(e.target.value);
-  };
-
-  const handleBlur = () => {
-    onChange(localValue);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      const nextRow = rowIndex + 1;
-      const nextInput = document.querySelector(`input[data-row="${nextRow}"][data-col="${colIndex}"]`) as HTMLInputElement;
-      if (nextInput) {
-        nextInput.focus();
-        nextInput.select();
-      }
-    }
-  };
-
-  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.target.select();
-  };
-
-  return (
-    <input
-      type="text"
-      value={localValue}
-      onChange={handleChange}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-      onFocus={handleFocus}
-      data-row={rowIndex}
-      data-col={colIndex}
-    />
-  );
-};
-
-const SyncLoaderIcon = ({ size = 24, className }: { size?: number; className?: string }) => (
-  <svg
-    className={className}
-    width={size}
-    height={size}
-    viewBox="0 0 20 20"
-    fill="hsl(228, 97%, 42%)"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden="true"
-  >
-    <defs>
-      <linearGradient id="RadialGradient8932">
-        <stop offset="0%" stopColor="currentColor" stopOpacity="1" />
-        <stop offset="100%" stopColor="currentColor" stopOpacity="0.25" />
-      </linearGradient>
-    </defs>
-    <style>{`@keyframes spin8932 { to { transform: rotate(360deg); } } #circle8932 { transform-origin: 50% 50%; stroke: url(#RadialGradient8932); fill: none; animation: spin8932 .5s infinite linear; }`}</style>
-    <circle cx="10" cy="10" r="8" id="circle8932" strokeWidth="2" />
-  </svg>
-);
-
-// EditableCurrency component to handle formatted currency inputs (like LCB, Other)
-const EditableCurrency = ({ value, onChange, className, style }: { value: number, onChange: (val: number) => void, className?: string, style?: React.CSSProperties }) => {
-  const [localValue, setLocalValue] = useState<string>(value ? fmt(value) : '');
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalValue(value ? fmt(value) : '');
-  }, [value]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalValue(e.target.value);
-  };
-
-  const handleBlur = () => {
-    const parsed = pf(localValue);
-    onChange(parsed);
-    setLocalValue(parsed ? fmt(parsed) : '');
-  };
-
-  return (
-    <input
-      type="text"
-      className={className}
-      style={style}
-      value={localValue}
-      onChange={handleChange}
-      onBlur={handleBlur}
-    />
-  );
-};
-
-const getMergedCalendarUrl = (url?: string) => {
-  const defaultUrl = 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0';
-  let targetUrl = url || defaultUrl;
-  
-  try {
-    if (targetUrl && !targetUrl.startsWith('http')) {
-      targetUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(targetUrl)}&ctz=Asia%2FHo_Chi_Minh`;
-    }
-    const urlObj = new URL(targetUrl);
-    const sources = urlObj.searchParams.getAll('src');
-    if (!sources.includes('578s5hnkj9o8u4pg1sre0g83fk@group.calendar.google.com')) {
-      urlObj.searchParams.append('src', '578s5hnkj9o8u4pg1sre0g83fk@group.calendar.google.com');
-    }
-    if (!sources.includes('vi.vietnamese#holiday@group.v.calendar.google.com')) {
-      urlObj.searchParams.append('src', 'vi.vietnamese#holiday@group.v.calendar.google.com');
-    }
-    urlObj.searchParams.set('showTitle', '0');
-    urlObj.searchParams.set('showCalendars', '0');
-    urlObj.searchParams.set('showTz', '0');
-    return urlObj.toString();
-  } catch {
-    return targetUrl;
-  }
-};
 
 function App() {
   const getInitialMonth = () => {
@@ -284,18 +90,8 @@ function App() {
       lcb: 0,
       dependents: 0,
       months: {},
-      settings: {
-        bhxh_pct: 8,
-        bhyt_pct: 1.5,
-        bhtn_pct: 1,
-        cong_doan: 47300,
-        other_deduction: 0,
-        deductions: [],
-        allowances: [],
-        bonuses: [],
-        google_calendar_url: 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0'
-      },
-      lastUpdated: Date.now()
+      settings: { ...DEFAULT_SETTINGS },
+      lastUpdated: 0
     };
     for (let m = 1; m <= 12; m++) {
       initData.months[m] = { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
@@ -311,6 +107,7 @@ function App() {
     return '';
   });
   const [guestInputName, setGuestInputName] = useState('');
+  const [guestPassphrase, setGuestPassphrase] = useState('');
   const [authLoading, setAuthLoading] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('has_firebase_session') === '1';
@@ -344,28 +141,23 @@ function App() {
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [syncCode, setSyncCode] = useState('');
-  const [syncStatus, setSyncStatus] = useState('');
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ state: 'idle', message: '' });
   const [autoSyncCode, setAutoSyncCode] = useState('');
   const isUserInputRef = useRef(false);
   const [accountHydrated, setAccountHydrated] = useState(false);
-  const getCurrentTimeString = () => {
-    const now = new Date();
-    const wd = WEEKDAYS[now.getDay()];
-    const d = String(now.getDate()).padStart(2, '0');
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const h = String(now.getHours()).padStart(2, '0');
-    const min = String(now.getMinutes()).padStart(2, '0');
-    const s = String(now.getSeconds()).padStart(2, '0');
-    return `${wd} ${d}/${m} ${h}:${min}:${s}`;
-  };
-  const [currentTime, setCurrentTime] = useState<string>(getCurrentTimeString());
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setCurrentTime(getCurrentTimeString());
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, []);
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showSyncModal) setShowSyncModal(false);
+        if (showSettingsModal) setShowSettingsModal(false);
+        if (showAccountMenu) setShowAccountMenu(false);
+        if (showPasswordForm) setShowPasswordForm(false);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [showSyncModal, showSettingsModal, showAccountMenu, showPasswordForm]);
 
   useEffect(() => {
     const forceBlur = () => {
@@ -385,8 +177,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    let unsub: (() => void) | undefined;
-    watchAuthState((nextUser) => {
+    const unsubscribe = watchAuthState((nextUser) => {
       if (nextUser) {
         localStorage.setItem('has_firebase_session', '1');
       } else {
@@ -395,19 +186,21 @@ function App() {
       setUser(nextUser);
       setProfileDisplayName(nextUser?.displayName || '');
       setAuthLoading(false);
-    }).then((unsubscribe) => {
-      unsub = unsubscribe;
     });
     return () => {
-      if (unsub) unsub();
+      unsubscribe.then((unsub) => {
+        if (unsub) unsub();
+      });
     };
   }, []);
 
   useEffect(() => {
-    setAccountHydrated(false);
     if (!user) return;
 
     const loadAccountData = async () => {
+      // Reset hydration flag at start of load
+      setAccountHydrated(false);
+
       const saved = localStorage.getItem(storageDataKey(user.uid));
       let localData = createDefaultData();
       let hasSavedLocalData = false;
@@ -424,35 +217,37 @@ function App() {
       }
 
       try {
-        setSyncStatus('Đang tải dữ liệu tài khoản...');
+        setSyncStatus({ state: 'syncing', message: 'Đang tải dữ liệu tài khoản...' });
         const cloudData = await syncAccountFromCloud(user.uid);
         if (cloudData) {
           const cloudTime = Number(cloudData.lastUpdated) || 0;
           const localTime = Number(localData.lastUpdated) || 0;
-          
+
           if (hasSavedLocalData && hasMeaningfulData(localData) && cloudTime > 0 && localTime > cloudTime) {
             setData(localData);
-            setSyncStatus('⏳ Dữ liệu trên máy mới hơn, đang đồng bộ lên Cloud...');
+            setSyncStatus({ state: 'syncing', message: '⏳ Dữ liệu trên máy mới hơn, đang đồng bộ lên Cloud...' });
             const wasUploaded = await syncAccountToCloud(user.uid, localData);
-            setSyncStatus(wasUploaded
-              ? '✅ Đã đồng bộ dữ liệu máy này lên Cloud.'
-              : '✅ Cloud có dữ liệu mới hơn, giữ nguyên dữ liệu Cloud.'
-            );
+            setSyncStatus({
+              state: 'success',
+              message: wasUploaded
+                ? '✅ Đã đồng bộ dữ liệu máy này lên Cloud.'
+                : '✅ Cloud có dữ liệu mới hơn, giữ nguyên dữ liệu Cloud.'
+            });
           } else {
             const cloudAccountData = cloudData as AppData;
             setData(cloudAccountData);
             localStorage.setItem(storageDataKey(user.uid), JSON.stringify(cloudAccountData));
-            setSyncStatus('✅ Đã đồng bộ dữ liệu theo tài khoản.');
+            setSyncStatus({ state: 'success', message: '✅ Đã đồng bộ dữ liệu theo tài khoản.' });
           }
         } else {
           setData(localData);
           await syncAccountToCloud(user.uid, localData);
-          setSyncStatus('✅ Đã tạo dữ liệu Cloud cho tài khoản.');
+          setSyncStatus({ state: 'success', message: '✅ Đã tạo dữ liệu Cloud cho tài khoản.' });
         }
       } catch (e: unknown) {
         console.error('Account sync load error:', e);
         setData(localData);
-        setSyncStatus('❌ Không tải được dữ liệu tài khoản, đang dùng dữ liệu máy này.');
+        setSyncStatus({ state: 'error', message: '❌ Không tải được dữ liệu tài khoản, đang dùng dữ liệu máy này.' });
       } finally {
         setAccountHydrated(true);
       }
@@ -460,27 +255,61 @@ function App() {
 
     void loadAccountData();
 
+    // Load saved sync code
     const savedSyncCode = localStorage.getItem(storageSyncKey(user.uid)) || '';
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSyncCode(savedSyncCode);
+     
     setAutoSyncCode(savedSyncCode);
   }, [user]);
+
+  useEffect(() => {
+    if (user || !guestName) return;
+
+    const loadGuestData = () => {
+      const guestSyncCode = localStorage.getItem(storageSyncKey(null));
+      if (guestSyncCode) {
+        setAutoSyncCode(guestSyncCode);
+      }
+
+      const saved = localStorage.getItem(storageDataKey(null));
+      if (saved) {
+        try {
+          const parsedData: unknown = JSON.parse(saved);
+          if (isStoredAppData(parsedData)) {
+            setData(parsedData);
+            return;
+          }
+        } catch {
+          // fallthrough to default
+        }
+      }
+      setData(createDefaultData());
+    };
+
+    loadGuestData();
+  }, [guestName, user]);
 
   useEffect(() => {
     if (!user || !accountHydrated) return;
     localStorage.setItem(storageDataKey(user.uid), JSON.stringify(data));
 
-    setSyncStatus('Đang tự động đồng bộ...');
+    // Auto-sync to cloud after local changes
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ...' });
 
     const timer = setTimeout(async () => {
       try {
         const wasUploaded = await syncAccountToCloud(user.uid, data);
-        setSyncStatus(wasUploaded
-          ? '✅ Đã tự động đồng bộ theo tài khoản.'
-          : '✅ Cloud có dữ liệu mới hơn, giữ nguyên dữ liệu Cloud.'
-        );
+        setSyncStatus({
+          state: 'success',
+          message: wasUploaded
+            ? '✅ Đã tự động đồng bộ theo tài khoản.'
+            : '✅ Cloud có dữ liệu mới hơn, giữ nguyên dữ liệu Cloud.'
+        });
       } catch (e) {
         console.error('Account auto sync error:', e);
-        setSyncStatus('❌ Tự động đồng bộ tài khoản thất bại.');
+        setSyncStatus({ state: 'error', message: '❌ Tự động đồng bộ tài khoản thất bại.' });
       }
     }, 700);
 
@@ -490,16 +319,16 @@ function App() {
   useEffect(() => {
     if (!autoSyncCode.trim() || !isUserInputRef.current) return;
 
-    setSyncStatus('Đang tự động đồng bộ lên Cloud...');
+    setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
 
     const timer = setTimeout(async () => {
       try {
         await syncToCloud(autoSyncCode, data, user?.uid);
-        setSyncStatus('✅ Đã tự động đồng bộ lên Cloud.');
+        setSyncStatus({ state: 'success', message: '✅ Đã tự động đồng bộ lên Cloud.' });
         isUserInputRef.current = false;
       } catch (e: unknown) {
         console.error('Auto sync error:', e);
-        setSyncStatus('❌ Tự động đồng bộ thất bại: ' + (e instanceof Error ? e.message : 'Lỗi không xác định'));
+        setSyncStatus({ state: 'error', message: '❌ Tự động đồng bộ thất bại: ' + (e instanceof Error ? e.message : 'Lỗi không xác định') });
         isUserInputRef.current = false;
       }
 
@@ -510,17 +339,18 @@ function App() {
 
   const updateData = (updates: Partial<AppData>) => {
     isUserInputRef.current = true;
-    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
+    if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => ({ ...prev, ...updates, lastUpdated: Date.now() }));
   };
 
   const updateSettings = (updates: Partial<AppSettings>) => {
     isUserInputRef.current = true;
-    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
+    if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => ({
       ...prev,
       settings: {
-        ...(prev.settings || { bhxh_pct: 8, bhyt_pct: 1.5, bhtn_pct: 1, cong_doan: 47300, other_deduction: 0, deductions: [], allowances: [], bonuses: [], google_calendar_url: 'https://calendar.google.com/calendar/embed?src=bmd1eWVua2ltaG9hdmJAZ21haWwuY29t&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0' }),
+        ...DEFAULT_SETTINGS,
+        ...(prev.settings || {}),
         ...updates
       },
       lastUpdated: Date.now()
@@ -529,7 +359,7 @@ function App() {
 
   const updateMonthOT = (month: number, dateIso: string, otIndex: number, value: string) => {
     isUserInputRef.current = true;
-    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
+    if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {} };
       const currentOT = monthData.ot[dateIso] || [0, 0, 0, 0];
@@ -555,7 +385,7 @@ function App() {
 
   const updateMonthOther = (month: number, value: number) => {
     isUserInputRef.current = true;
-    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
+    if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [] };
       return {
@@ -571,7 +401,7 @@ function App() {
 
   const updateMonthBonusAmount = (month: number, bonusIndex: number, amount: number) => {
     isUserInputRef.current = true;
-    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
+    if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
       const currentAmounts = monthData.bonusAmounts || [];
@@ -590,7 +420,7 @@ function App() {
 
   const addMonthBonus = (month: number) => {
     isUserInputRef.current = true;
-    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
+    if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
       const currentBonuses = monthData.bonuses || [];
@@ -607,7 +437,7 @@ function App() {
 
   const updateMonthBonuses = (month: number, bonuses: Allowance[]) => {
     isUserInputRef.current = true;
-    if (autoSyncCode.trim()) setSyncStatus('Đang tự động đồng bộ lên Cloud...');
+    if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => {
       const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
       return {
@@ -623,7 +453,7 @@ function App() {
 
   const handleUpload = async () => {
     if (!syncCode.trim()) {
-      setSyncStatus('❌ Vui lòng nhập Mã đồng bộ trước khi tải lên.');
+      setSyncStatus({ state: 'error', message: '❌ Vui lòng nhập Mã đồng bộ trước khi tải lên.' });
       return;
     }
 
@@ -635,33 +465,71 @@ function App() {
     }
 
     try {
-      setSyncStatus('Đang tải lên...');
+      setSyncStatus({ state: 'syncing', message: 'Đang tải lên...' });
       if (user) localStorage.setItem(storageSyncKey(user.uid), syncCode);
       await syncToCloud(syncCode, data, user?.uid);
       setAutoSyncCode(syncCode.trim());
-      setSyncStatus('✅ Đã lưu lên Cloud thành công! Tự động đồng bộ đã bật.');
+      setSyncStatus({ state: 'success', message: '✅ Đã lưu lên Cloud thành công! Tự động đồng bộ đã bật.' });
     } catch (e: unknown) {
-      setSyncStatus('❌ Lỗi: ' + (e instanceof Error ? e.message : 'Lỗi không xác định'));
+      setSyncStatus({ state: 'error', message: '❌ Lỗi: ' + (e instanceof Error ? e.message : 'Lỗi không xác định') });
     }
   };
 
   const handleDownload = async () => {
     if (!syncCode.trim()) {
-      setSyncStatus('❌ Vui lòng nhập Mã đồng bộ trước khi tải về.');
+      setSyncStatus({ state: 'error', message: '❌ Vui lòng nhập Mã đồng bộ trước khi tải về.' });
       return;
     }
 
     try {
-      setSyncStatus('Đang tải về...');
+      setSyncStatus({ state: 'syncing', message: 'Đang tải về...' });
       if (user) localStorage.setItem(storageSyncKey(user.uid), syncCode);
       const cloudData = await syncFromCloud(syncCode);
       if (cloudData) {
         setData(cloudData);
         setAutoSyncCode(syncCode.trim());
-        setSyncStatus('✅ Tải về thành công! Tự động đồng bộ đã bật.');
+        setSyncStatus({ state: 'success', message: '✅ Tải về thành công! Tự động đồng bộ đã bật.' });
       }
     } catch (e: unknown) {
-      setSyncStatus('❌ Lỗi: ' + (e instanceof Error ? e.message : 'Lỗi không xác định'));
+      setSyncStatus({ state: 'error', message: '❌ Lỗi: ' + (e instanceof Error ? e.message : 'Lỗi không xác định') });
+    }
+  };
+
+  const handleGuestEnter = async () => {
+    const name = guestInputName.trim();
+    const passphrase = guestPassphrase.trim();
+
+    if (!name) {
+      setSyncStatus({ state: 'error', message: '❌ Vui lòng nhập tên của bạn.' });
+      return;
+    }
+
+    if (!isValidPassphrase(passphrase)) {
+      setSyncStatus({ state: 'error', message: '❌ Mã bảo mật phải có ít nhất 6 ký tự.' });
+      return;
+    }
+
+    try {
+      setSyncStatus({ state: 'syncing', message: 'Đang tải dữ liệu của bạn...' });
+      const hashedCode = await hashGuestCode(name, passphrase);
+
+      localStorage.setItem('salary_guest_name', name);
+      localStorage.setItem(storageSyncKey(null), hashedCode);
+
+      setGuestName(name);
+      setAutoSyncCode(hashedCode);
+      setSyncCode(hashedCode);
+
+      const cloudData = await syncFromCloud(hashedCode);
+      if (cloudData) {
+        setData(cloudData as AppData);
+        setSyncStatus({ state: 'success', message: '✅ Đã tải dữ liệu từ Cloud.' });
+      } else {
+        setSyncStatus({ state: 'success', message: '✅ Bắt đầu với dữ liệu mới.' });
+      }
+    } catch (error) {
+      console.error('Guest enter error:', error);
+      setSyncStatus({ state: 'error', message: '❌ Không thể tải dữ liệu. Vui lòng thử lại.' });
     }
   };
 
@@ -699,9 +567,9 @@ function App() {
     try {
       const updatedUser = await updateDisplayNameProfile(profileDisplayName.trim());
       setUser({ ...updatedUser });
-      setSyncStatus('✅ Đã cập nhật tên hiển thị.');
+      setSyncStatus({ state: 'success', message: '✅ Đã cập nhật tên hiển thị.' });
     } catch (e: unknown) {
-      setSyncStatus('❌ Không cập nhật được tên hiển thị: ' + (e instanceof Error ? e.message : 'Lỗi không xác định'));
+      setSyncStatus({ state: 'error', message: '❌ Không cập nhật được tên hiển thị: ' + (e instanceof Error ? e.message : 'Lỗi không xác định') });
     }
   };
 
@@ -915,7 +783,7 @@ function App() {
                       value={bn.amount}
                       onChange={val => {
                         const newBns = [...monthBonuses];
-                        newBns[idx].amount = val;
+                        newBns[idx] = { ...newBns[idx], amount: val };
                         updateMonthBonuses(month, newBns);
                       }}
                       className="other-input"
@@ -959,63 +827,21 @@ function App() {
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <CalendarDays size={14} strokeWidth={2.5} /> LỊCH
                   </span>
-                  <button 
-                    onClick={() => {
-                      const url = window.prompt("Nhập link nhúng Google Calendar của bạn (hoặc Calendar ID):", data.settings?.google_calendar_url || "");
-                      if (url !== null) {
-                        let finalUrl = url.trim();
-                        if (finalUrl && finalUrl.includes('cid=')) {
-                          try {
-                            const urlObj = new URL(finalUrl);
-                            const cidVal = urlObj.searchParams.get('cid');
-                            if (cidVal) {
-                              finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(cidVal)}&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0`;
-                            }
-                          } catch {
-                            // ignore
-                          }
-                        } else if (finalUrl && !finalUrl.startsWith('http')) {
-                          finalUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(finalUrl)}&src=578s5hnkj9o8u4pg1sre0g83fk%40group.calendar.google.com&src=vi.vietnamese%23holiday%40group.v.calendar.google.com&ctz=Asia%2FHo_Chi_Minh&showTitle=0&showCalendars=0&showTz=0`;
-                        } else if (finalUrl && finalUrl.startsWith('http')) {
-                          try {
-                            const urlObj = new URL(finalUrl);
-                            urlObj.searchParams.set('showTitle', '0');
-                            urlObj.searchParams.set('showCalendars', '0');
-                            urlObj.searchParams.set('showTz', '0');
-                            const sources = urlObj.searchParams.getAll('src');
-                            if (!sources.includes('578s5hnkj9o8u4pg1sre0g83fk@group.calendar.google.com')) {
-                              urlObj.searchParams.append('src', '578s5hnkj9o8u4pg1sre0g83fk@group.calendar.google.com');
-                            }
-                            if (!sources.includes('vi.vietnamese#holiday@group.v.calendar.google.com')) {
-                              urlObj.searchParams.append('src', 'vi.vietnamese#holiday@group.v.calendar.google.com');
-                            }
-                            finalUrl = urlObj.toString();
-                          } catch {
-                            if (!finalUrl.includes('showTitle=')) {
-                              finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'showTitle=0';
-                            }
-                            if (!finalUrl.includes('showCalendars=')) {
-                              finalUrl += '&showCalendars=0';
-                            }
-                            if (!finalUrl.includes('showTz=')) {
-                              finalUrl += '&showTz=0';
-                            }
-                          }
-                        }
-                        updateSettings({ google_calendar_url: finalUrl });
-                      }
-                    }}
+                  <button
+                    onClick={() => setShowSettingsModal(true)}
                     className="btn-mini-settings"
-                    style={{ 
-                      background: 'rgba(255, 255, 255, 0.1)', 
-                      border: 'none', 
-                      borderRadius: '4px', 
-                      color: 'var(--text-main)', 
-                      padding: '4px 8px', 
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      border: 'none',
+                      borderRadius: '4px',
+                      color: 'var(--text-main)',
+                      padding: '4px 8px',
                       cursor: 'pointer',
                       fontSize: '11px',
                       fontWeight: 600
                     }}
+                    title="Cấu hình Calendar URL trong Cài đặt"
+                    aria-label="Open settings to configure calendar"
                   >
                     Cài đặt lịch
                   </button>
@@ -1066,6 +892,7 @@ function App() {
                     onChange={(e) => setAuthDisplayName(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
                     placeholder="Tên của bạn"
+                    aria-label="Tên hiển thị"
                   />
                 </div>
               )}
@@ -1077,6 +904,7 @@ function App() {
                   onChange={(e) => setAuthIdentifier(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
                   placeholder="you@example.com"
+                  aria-label="Email"
                 />
                 <small>Nhập email để đăng nhập hoặc nhận lại mật khẩu.</small>
               </div>
@@ -1088,7 +916,8 @@ function App() {
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') void handleAuthSubmit(); }}
-                    placeholder="Tối thiểu 6 ký tự"
+                    placeholder="Mật khẩu"
+                    aria-label="Mật khẩu"
                   />
                 </div>
               )}
@@ -1138,68 +967,54 @@ function App() {
                 Trải nghiệm ngay
               </h2>
               <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginBottom: '24px', lineHeight: 1.6 }}>
-                Không cần tạo tài khoản. Chỉ cần nhập tên của bạn để bắt đầu tính lương và tự động đồng bộ.
+                Không cần tạo tài khoản. Nhập tên và mã bảo mật (tối thiểu 6 ký tự) để bắt đầu và đồng bộ an toàn.
               </p>
               <div className="hero-buttons" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <input 
-                  type="text" 
-                  placeholder="Nhập tên của bạn..." 
+                <input
+                  type="text"
+                  placeholder="Nhập tên của bạn..."
                   value={guestInputName}
                   onChange={e => setGuestInputName(e.target.value)}
-                  style={{ 
-                    width: '100%', padding: '14px 18px', borderRadius: '12px', 
-                    border: '1px solid rgba(74, 222, 128, 0.3)', background: 'rgba(15, 23, 42, 0.6)', 
+                  aria-label="Tên người dùng"
+                  style={{
+                    width: '100%', padding: '14px 18px', borderRadius: '12px',
+                    border: '1px solid rgba(74, 222, 128, 0.3)', background: 'rgba(15, 23, 42, 0.6)',
+                    color: '#fff', fontSize: '1rem', outline: 'none', transition: 'all 0.3s'
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#4ade80'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(74, 222, 128, 0.3)'}
+                />
+                <input
+                  type="password"
+                  placeholder="Mã bảo mật (tối thiểu 6 ký tự)..."
+                  value={guestPassphrase}
+                  onChange={e => setGuestPassphrase(e.target.value)}
+                  aria-label="Mã bảo mật"
+                  style={{
+                    width: '100%', padding: '14px 18px', borderRadius: '12px',
+                    border: '1px solid rgba(74, 222, 128, 0.3)', background: 'rgba(15, 23, 42, 0.6)',
                     color: '#fff', fontSize: '1rem', outline: 'none', transition: 'all 0.3s'
                   }}
                   onFocus={e => e.target.style.borderColor = '#4ade80'}
                   onBlur={e => e.target.style.borderColor = 'rgba(74, 222, 128, 0.3)'}
                   onKeyDown={e => {
-                    if (e.key === 'Enter' && guestInputName.trim()) {
-                      const name = guestInputName.trim();
-                      localStorage.setItem('salary_guest_name', name);
-                      setGuestName(name);
-                      setAutoSyncCode(name);
-                      setSyncCode(name);
-                      setSyncStatus('Đang tải dữ liệu của bạn...');
-                      syncFromCloud(name).then(d => {
-                        if (d) {
-                          setData(d as AppData);
-                          setSyncStatus('✅ Đã tải dữ liệu từ Cloud.');
-                        } else {
-                          setSyncStatus('✅ Bắt đầu với dữ liệu mới.');
-                        }
-                      }).catch(() => setSyncStatus('✅ Bắt đầu với dữ liệu mới.'));
+                    if (e.key === 'Enter') {
+                      void handleGuestEnter();
                     }
                   }}
                 />
-                <button 
-                  className="btn" 
-                  style={{ 
-                    width: '100%', padding: '14px', borderRadius: '12px', 
-                    background: 'linear-gradient(135deg, #22c55e, #10b981)', color: '#fff', 
+                <button
+                  className="btn"
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #22c55e, #10b981)', color: '#fff',
                     fontSize: '1.05rem', fontWeight: 700, border: 'none', cursor: 'pointer',
                     boxShadow: '0 8px 20px rgba(16, 185, 129, 0.25)', transition: 'transform 0.2s, box-shadow 0.2s'
                   }}
                   onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                   onMouseOut={e => e.currentTarget.style.transform = 'none'}
-                  onClick={() => {
-                  if (guestInputName.trim()) {
-                    const name = guestInputName.trim();
-                    localStorage.setItem('salary_guest_name', name);
-                    setGuestName(name);
-                    setAutoSyncCode(name);
-                    setSyncCode(name);
-                    setSyncStatus('Đang tải dữ liệu của bạn...');
-                    syncFromCloud(name).then(d => {
-                      if (d) {
-                        setData(d as AppData);
-                        setSyncStatus('✅ Đã tải dữ liệu từ Cloud.');
-                      } else {
-                        setSyncStatus('✅ Bắt đầu với dữ liệu mới.');
-                      }
-                    }).catch(() => setSyncStatus('✅ Bắt đầu với dữ liệu mới.'));
-                  }
-                }}>
+                  onClick={() => { void handleGuestEnter(); }}
+                >
                   Vào App Ngay
                 </button>
               </div>
@@ -1209,7 +1024,7 @@ function App() {
             <div className="hero-card standard-card" style={{ flex: '1 1 320px', maxWidth: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '36px 32px' }}>
               <h2 style={{ fontSize: '1.5rem', marginBottom: '12px', color: '#e2e8f0' }}>Đăng nhập tài khoản</h2>
               <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginBottom: '24px', lineHeight: 1.6 }}>
-                Lưu trữ dữ liệu an toàn lâu dài với tài khoản Email hoặc số điện thoại. Bảo mật tuyệt đối.
+                Lưu trữ dữ liệu an toàn lâu dài với tài khoản Email. Bảo mật tuyệt đối.
               </p>
               <div className="hero-buttons">
                 <button 
@@ -1287,23 +1102,22 @@ function App() {
         </div>
         <div className="header-controls">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button className={`sync-btn ${syncStatus.includes('Đang') ? 'syncing' : ''} ${syncStatus.includes('❌') ? 'error' : ''}`} onClick={() => setShowSyncModal(true)} title={syncStatus || 'Đồng bộ'}>
-              {syncStatus.includes('❌') ? <X size={14} aria-hidden="true" /> : <Cloud size={14} aria-hidden="true" />}
+            <button className={`sync-btn ${syncStatus.state === 'syncing' ? 'syncing' : ''} ${syncStatus.state === 'error' ? 'error' : ''}`} onClick={() => setShowSyncModal(true)} title={syncStatus.message || 'Đồng bộ'}>
+              {syncStatus.state === 'error' ? <X size={14} aria-hidden="true" /> : <Cloud size={14} aria-hidden="true" />}
               Đồng bộ
             </button>
           </div>
-          <div className="led-ticker" aria-label="Ngày và giờ hiện tại">
-            <span>
-              {currentTime}
-            </span>
-          </div>
+          <Clock />
           <div className="input-group">
             <label>Năm:</label>
             <input
               type="text"
               inputMode="numeric"
               value={data.year}
-              onChange={(e) => updateData({ year: Number(e.target.value) })}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                updateData({ year: isNaN(val) ? new Date().getFullYear() : val });
+              }}
               style={{ width: '75px', textAlign: 'center' }}
             />
           </div>
@@ -1313,7 +1127,10 @@ function App() {
               type="text"
               inputMode="numeric"
               value={data.dependents}
-              onChange={(e) => updateData({ dependents: Number(e.target.value) })}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                updateData({ dependents: isNaN(val) ? 0 : val });
+              }}
               style={{ width: '50px', textAlign: 'center' }}
             />
           </div>
@@ -1352,6 +1169,7 @@ function App() {
                           value={profileDisplayName}
                           onChange={e => setProfileDisplayName(e.target.value)}
                           className="account-menu-input"
+                          aria-label="Tên hiển thị mới"
                         />
                         <button className="account-menu-btn primary" onClick={() => { void handleSaveDisplayName(); }}>Lưu</button>
                       </div>
@@ -1370,6 +1188,7 @@ function App() {
                             onChange={e => setPasswordCurrent(e.target.value)}
                             className="account-menu-input"
                             style={{ marginBottom: '6px' }}
+                            aria-label="Mật khẩu hiện tại"
                           />
                           <input
                             type="password"
@@ -1378,6 +1197,7 @@ function App() {
                             onChange={e => setPasswordNew(e.target.value)}
                             className="account-menu-input"
                             style={{ marginBottom: '6px' }}
+                            aria-label="Mật khẩu mới"
                           />
                           <input
                             type="password"
@@ -1386,6 +1206,7 @@ function App() {
                             onChange={e => setPasswordConfirm(e.target.value)}
                             className="account-menu-input"
                             style={{ marginBottom: '6px' }}
+                            aria-label="Xác nhận mật khẩu mới"
                           />
                           {passwordError && <div className="account-menu-error" style={{ marginBottom: '6px' }}><XCircle size={11} /> {passwordError}</div>}
                           {passwordSuccess && <div className="account-menu-success" style={{ marginBottom: '6px' }}><CheckCircle size={11} /> {passwordSuccess}</div>}
@@ -1425,8 +1246,8 @@ function App() {
 
       {showSyncModal && (
         <div className="modal-overlay">
-          <div className="modal-content">
-            <h2><Cloud size={18} /> Đồng bộ Cloud</h2>
+          <div className="modal-content" role="dialog" aria-labelledby="sync-modal-title" aria-modal="true">
+            <h2 id="sync-modal-title"><Cloud size={18} /> Đồng bộ Cloud</h2>
             <p className="modal-desc">Nhập Mã đồng bộ bí mật của riêng bạn (ví dụ: LUONG2026). Dùng chung mã này trên các thiết bị khác để tải dữ liệu về.</p>
 
             <div className="form-group">
@@ -1443,16 +1264,16 @@ function App() {
               Nếu bạn chỉ muốn lấy dữ liệu từ thiết bị khác, hãy dùng "Tải về".
             </div>
 
-            {syncStatus && (
+            {syncStatus.message && (
               <div className="sync-status">
-                {syncStatus.includes('Đang') ? (
+                {syncStatus.state === 'syncing' ? (
                   <div className="sync-lottie-wrapper">
                     <SyncLoaderIcon size={44} className="sync-loader-icon" />
                   </div>
-                ) : syncStatus.includes('✅') ? (
+                ) : syncStatus.state === 'success' ? (
                   <div className="sync-success-icon"><CheckCircle size={22} color="#4ade80" /></div>
-                ) : syncStatus.includes('❌') ? (
-                  <div>{syncStatus}</div>
+                ) : syncStatus.state === 'error' ? (
+                  <div>{syncStatus.message}</div>
                 ) : null}
               </div>
             )}
@@ -1481,8 +1302,8 @@ function App() {
 
       {showSettingsModal && (
         <div className="modal-overlay">
-          <div className="modal-content settings-modal">
-            <h2><Settings size={18} /> Cài đặt</h2>
+          <div className="modal-content settings-modal" role="dialog" aria-labelledby="settings-modal-title" aria-modal="true">
+            <h2 id="settings-modal-title"><Settings size={18} /> Cài đặt</h2>
 
             <div className="settings-grid">
               {/* CỘT TRÁI: Lương & Khấu trừ */}
@@ -1518,7 +1339,10 @@ function App() {
                       type="number"
                       step="0.1"
                       value={data.settings?.bhxh_pct ?? 8}
-                      onChange={e => updateSettings({ bhxh_pct: Number(e.target.value) })}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        updateSettings({ bhxh_pct: isNaN(val) ? 8 : val });
+                      }}
                     />
                   </div>
                   <div className="form-group compact">
@@ -1527,7 +1351,10 @@ function App() {
                       type="number"
                       step="0.1"
                       value={data.settings?.bhyt_pct ?? 1.5}
-                      onChange={e => updateSettings({ bhyt_pct: Number(e.target.value) })}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        updateSettings({ bhyt_pct: isNaN(val) ? 1.5 : val });
+                      }}
                     />
                   </div>
                   <div className="form-group compact">
@@ -1536,7 +1363,10 @@ function App() {
                       type="number"
                       step="0.1"
                       value={data.settings?.bhtn_pct ?? 1}
-                      onChange={e => updateSettings({ bhtn_pct: Number(e.target.value) })}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        updateSettings({ bhtn_pct: isNaN(val) ? 1 : val });
+                      }}
                     />
                   </div>
                 </div>
@@ -1551,7 +1381,7 @@ function App() {
                         value={ded.name}
                         onChange={e => {
                           const newDeds = [...(data.settings?.deductions || [])];
-                          newDeds[idx].name = e.target.value;
+                          newDeds[idx] = { ...newDeds[idx], name: e.target.value };
                           updateSettings({ deductions: newDeds });
                         }}
                         style={{ flex: 2 }}
@@ -1560,7 +1390,7 @@ function App() {
                         value={ded.amount}
                         onChange={val => {
                           const newDeds = [...(data.settings?.deductions || [])];
-                          newDeds[idx].amount = val;
+                          newDeds[idx] = { ...newDeds[idx], amount: val };
                           updateSettings({ deductions: newDeds });
                         }}
                         style={{ flex: 1 }}
@@ -1587,7 +1417,7 @@ function App() {
                         value={al.name}
                         onChange={e => {
                           const newAls = [...(data.settings?.allowances || [])];
-                          newAls[idx].name = e.target.value;
+                          newAls[idx] = { ...newAls[idx], name: e.target.value };
                           updateSettings({ allowances: newAls });
                         }}
                         style={{ flex: 2 }}
@@ -1596,7 +1426,7 @@ function App() {
                         value={al.amount}
                         onChange={val => {
                           const newAls = [...(data.settings?.allowances || [])];
-                          newAls[idx].amount = val;
+                          newAls[idx] = { ...newAls[idx], amount: val };
                           updateSettings({ allowances: newAls });
                         }}
                         style={{ flex: 1 }}
@@ -1626,7 +1456,7 @@ function App() {
                         value={bn.name}
                         onChange={e => {
                           const newBns = [...(data.settings?.bonuses || [])];
-                          newBns[idx].name = e.target.value;
+                          newBns[idx] = { ...newBns[idx], name: e.target.value };
                           updateSettings({ bonuses: newBns });
                         }}
                         style={{ flex: 2 }}
@@ -1635,7 +1465,7 @@ function App() {
                         value={bn.amount}
                         onChange={val => {
                           const newBns = [...(data.settings?.bonuses || [])];
-                          newBns[idx].amount = val;
+                          newBns[idx] = { ...newBns[idx], amount: val };
                           updateSettings({ bonuses: newBns });
                         }}
                         style={{ flex: 1 }}
@@ -1652,6 +1482,21 @@ function App() {
                   updateSettings({ bonuses: newBns });
                 }}>+ Thêm thưởng cố định</button>
 
+                <h3 className="settings-section-title"><CalendarDays size={14} /> Lịch Google Calendar</h3>
+                <div className="form-group">
+                  <label>URL lịch hoặc Calendar ID:</label>
+                  <input
+                    type="text"
+                    value={data.settings?.google_calendar_url || ''}
+                    onChange={e => updateSettings({ google_calendar_url: e.target.value })}
+                    placeholder="Nhập link embed hoặc Calendar ID"
+                    aria-label="Google Calendar URL"
+                  />
+                  <small style={{ display: 'block', marginTop: '4px', color: '#64748b' }}>
+                    Có thể nhập link nhúng hoặc Calendar ID để hiển thị lịch nghỉ phép
+                  </small>
+                </div>
+
                 <h3 className="settings-section-title"><CalendarDays size={14} /> Thưởng tháng {activeTab}</h3>
                 <div className="settings-list">
                   {(data.months[activeTab]?.bonuses || []).map((bn, idx) => (
@@ -1662,7 +1507,7 @@ function App() {
                         value={bn.name}
                         onChange={e => {
                           const newBns = [...(data.months[activeTab]?.bonuses || [])];
-                          newBns[idx].name = e.target.value;
+                          newBns[idx] = { ...newBns[idx], name: e.target.value };
                           updateMonthBonuses(activeTab, newBns);
                         }}
                         style={{ flex: 2 }}

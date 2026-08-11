@@ -27,3 +27,6 @@ dist-ssr
 
 # Kiro agent files (local only)
 .agent/
+
+# Backup files
+*.bak

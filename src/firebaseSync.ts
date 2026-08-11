@@ -1,14 +1,14 @@
 import type { FirebaseApp } from 'firebase/app';
 import type { Firestore } from 'firebase/firestore';
-import type { Auth, User, ConfirmationResult } from 'firebase/auth';
+import type { Auth, User } from 'firebase/auth';
 
 export const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyC8GH_52CNpOBnYppvUN5d_PeKYo9Cw5uk",
-  authDomain: "gen-lang-client-0324008326.firebaseapp.com",
-  projectId: "gen-lang-client-0324008326",
-  storageBucket: "gen-lang-client-0324008326.firebasestorage.app",
-  messagingSenderId: "840193563721",
-  appId: "1:840193563721:web:b870618c57f1fb7cecb398"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyC8GH_52CNpOBnYppvUN5d_PeKYo9Cw5uk",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "gen-lang-client-0324008326.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "gen-lang-client-0324008326",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "gen-lang-client-0324008326.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "840193563721",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:840193563721:web:b870618c57f1fb7cecb398"
 };
 
 let app: FirebaseApp | null = null;
@@ -46,13 +46,6 @@ const getDbInstance = async () => {
     db = getFirestore(app!);
   }
   return db;
-};
-
-const formatPhoneNumber = (phoneNumber: string) => {
-  const cleaned = phoneNumber.trim();
-  if (!cleaned) throw new Error('Số điện thoại không hợp lệ.');
-  if (cleaned.startsWith('+')) return cleaned;
-  return `+84${cleaned.replace(/^0+/, '')}`;
 };
 
 export const watchAuthState = (callback: (user: User | null) => void) => {
@@ -118,61 +111,7 @@ export const updateUserPassword = async (currentPassword: string, newPassword: s
   return authInstance.currentUser;
 };
 
-export const setupRecaptcha = async (elementId: string, invisible = true) => {
-  const authInstance = await getAuthInstance();
-  const { RecaptchaVerifier } = await import('firebase/auth');
-  return new RecaptchaVerifier(authInstance, elementId, {
-    size: invisible ? 'invisible' : 'normal',
-    callback: () => {},
-    'expired-callback': () => {
-      throw new Error('reCAPTCHA đã hết hạn, vui lòng thử lại.');
-    }
-  });
-};
-
-export const sendPhoneOTP = async (
-  phoneNumber: string,
-  recaptchaVerifier: any
-): Promise<ConfirmationResult> => {
-  const authInstance = await getAuthInstance();
-  const { signInWithPhoneNumber } = await import('firebase/auth');
-  const formattedPhone = formatPhoneNumber(phoneNumber);
-  return signInWithPhoneNumber(authInstance, formattedPhone, recaptchaVerifier);
-};
-
-export const verifyPhoneOTP = async (
-  confirmationResult: ConfirmationResult,
-  otpCode: string
-) => {
-  return confirmationResult.confirm(otpCode);
-};
-
-export const linkPhoneToAccount = async (
-  phoneNumber: string,
-  recaptchaVerifier: any
-) => {
-  const authInstance = await getAuthInstance();
-  if (!authInstance.currentUser) throw new Error('Bạn chưa đăng nhập.');
-  const { signInWithPhoneNumber } = await import('firebase/auth');
-  const formattedPhone = formatPhoneNumber(phoneNumber);
-  return signInWithPhoneNumber(authInstance, formattedPhone, recaptchaVerifier);
-};
-
-export const confirmLinkPhone = async (
-  confirmationResult: ConfirmationResult,
-  otpCode: string
-) => {
-  const authInstance = await getAuthInstance();
-  if (!authInstance.currentUser) throw new Error('Bạn chưa đăng nhập.');
-  const { PhoneAuthProvider, linkWithCredential } = await import('firebase/auth');
-  const credential = PhoneAuthProvider.credential(
-    confirmationResult.verificationId,
-    otpCode
-  );
-  return linkWithCredential(authInstance.currentUser, credential);
-};
-
-export const syncToCloud = async (syncCode: string, data: any, ownerId?: string) => {
+export const syncToCloud = async (syncCode: string, data: unknown, ownerId?: string) => {
   if (!syncCode) throw new Error('Vui lòng nhập Mã đồng bộ!');
   const dbInstance = await getDbInstance();
   const { doc, setDoc } = await import('firebase/firestore');
@@ -194,16 +133,17 @@ export const syncFromCloud = async (syncCode: string) => {
   throw new Error('Không tìm thấy dữ liệu với Mã đồng bộ này!');
 };
 
-export const syncAccountToCloud = async (uid: string, data: any): Promise<boolean> => {
+export const syncAccountToCloud = async (uid: string, data: unknown): Promise<boolean> => {
   if (!uid) throw new Error('UID không hợp lệ.');
   const dbInstance = await getDbInstance();
   const { doc, runTransaction } = await import('firebase/firestore');
   const accountRef = doc(dbInstance, 'salary_accounts', uid);
-  const incomingLastUpdated = Number(data?.lastUpdated) || 0;
+  const incomingLastUpdated = Number((data as { lastUpdated?: number })?.lastUpdated) || 0;
 
   return runTransaction(dbInstance, async (transaction) => {
     const current = await transaction.get(accountRef);
-    const currentLastUpdated = Number(current.data()?.data?.lastUpdated) || 0;
+    const currentData = current.data()?.data as { lastUpdated?: number } | undefined;
+    const currentLastUpdated = Number(currentData?.lastUpdated) || 0;
 
     if (current.exists() && currentLastUpdated > incomingLastUpdated) {
       return false;
