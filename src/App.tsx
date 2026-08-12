@@ -5,7 +5,7 @@ import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHo
 import type { AppData, AppSettings, Allowance, SyncStatus } from './types'
 import { DEFAULT_SETTINGS, WEEKDAYS } from './constants'
 import { storageDataKey, storageSyncKey, getLocalDateStr } from './storage'
-import { isStoredAppData, hasMeaningfulData, getMergedCalendarUrl, hashGuestCode, isValidPassphrase } from './helpers'
+import { isStoredAppData, hasMeaningfulData, hashGuestCode, isValidPassphrase } from './helpers'
 import { EditableCell } from './components/EditableCell'
 import { EditableCurrency } from './components/EditableCurrency'
 import { Clock } from './components/Clock'
@@ -821,48 +821,24 @@ function App() {
               <span>THỰC NHẬN:</span>
               <span>{fmt(s.net)} VNĐ</span>
             </div>
-            <div className="google-calendar-container" style={{ width: '100%', marginTop: '16px' }}>
-              <div className="breakdown-card additions" style={{ margin: 0, padding: '16px' }}>
-                <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <CalendarDays size={14} strokeWidth={2.5} /> LỊCH
-                  </span>
-                  <button
-                    onClick={() => setShowSettingsModal(true)}
-                    className="btn-mini-settings"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      border: 'none',
-                      borderRadius: '4px',
-                      color: 'var(--text-main)',
-                      padding: '4px 8px',
-                      cursor: 'pointer',
-                      fontSize: '11px',
-                      fontWeight: 600
-                    }}
-                    title="Cấu hình Calendar URL trong Cài đặt"
-                    aria-label="Open settings to configure calendar"
-                  >
-                    Cài đặt lịch
-                  </button>
-                </h3>
-                
-                {(() => {
-                  const mergedUrl = getMergedCalendarUrl(data.settings?.google_calendar_url);
-                  return (
-                    <div style={{ position: 'relative', width: '100%', height: '300px', overflow: 'hidden', borderRadius: '8px' }}>
-                      <iframe
-                        src={mergedUrl}
-                        style={{ border: '0', borderRadius: '8px', background: 'white', position: 'absolute', top: '0', left: '0' }}
-                        width="100%"
-                        height="340"
-                        frameBorder="0"
-                        scrolling="no"
-                        title="Google Calendar"
-                      />
-                    </div>
-                  );
-                })()}
+
+            {/* A small celebratory pause below the net salary */}
+            <div className="ambient-card" aria-label="Lời nhắn chúc mừng ngày công">
+              <div className="ambient-orb ambient-orb-1" />
+              <div className="ambient-orb ambient-orb-2" />
+              <div className="ambient-orb ambient-orb-3" />
+              <div className="ambient-grid" />
+              <div className="ambient-confetti" aria-hidden="true">
+                <i /><i /><i /><i /><i /><i /><i /><i />
+              </div>
+              <div className="ambient-coins" aria-hidden="true">
+                <span>₫</span><span>₫</span><span>₫</span>
+              </div>
+              <div className="ambient-message">
+                <span className="ambient-message-icon" aria-hidden="true">✦</span>
+                <p className="ambient-kicker">HOÀN THÀNH THÁNG NÀY</p>
+                <strong>Mỗi ngày chăm chỉ đều đáng tự hào!</strong>
+                <p>Chúc bạn một tháng làm việc thật nhiều niềm vui.</p>
               </div>
             </div>
           </div>
@@ -1108,33 +1084,35 @@ function App() {
             </button>
           </div>
           <Clock />
-          <div className="input-group">
-            <label>Năm:</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={data.year}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                updateData({ year: isNaN(val) ? new Date().getFullYear() : val });
-              }}
-              style={{ width: '75px', textAlign: 'center' }}
-            />
+          <div className="header-data-group">
+            <div className="input-group">
+              <label>Năm:</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={data.year}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateData({ year: isNaN(val) ? new Date().getFullYear() : val });
+                }}
+                style={{ width: '75px', textAlign: 'center' }}
+              />
+            </div>
+            <div className="input-group">
+              <label>NPT:</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={data.dependents}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateData({ dependents: isNaN(val) ? 0 : val });
+                }}
+                style={{ width: '50px', textAlign: 'center' }}
+              />
+            </div>
+            <button className="icon-btn" title="Cài đặt" onClick={() => setShowSettingsModal(true)}><Settings size={16} /></button>
           </div>
-          <div className="input-group">
-            <label>NPT:</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={data.dependents}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                updateData({ dependents: isNaN(val) ? 0 : val });
-              }}
-              style={{ width: '50px', textAlign: 'center' }}
-            />
-          </div>
-          <button className="icon-btn" title="Cài đặt" onClick={() => setShowSettingsModal(true)}><Settings size={16} /></button>
 
           {/* Account button - replaces logout */}
           <div className="account-fab-wrapper account-in-header" ref={accountMenuRef}>
@@ -1481,21 +1459,6 @@ function App() {
                   const newBns = [...(data.settings?.bonuses || []), { name: '', amount: 0 }];
                   updateSettings({ bonuses: newBns });
                 }}>+ Thêm thưởng cố định</button>
-
-                <h3 className="settings-section-title"><CalendarDays size={14} /> Lịch Google Calendar</h3>
-                <div className="form-group">
-                  <label>URL lịch hoặc Calendar ID:</label>
-                  <input
-                    type="text"
-                    value={data.settings?.google_calendar_url || ''}
-                    onChange={e => updateSettings({ google_calendar_url: e.target.value })}
-                    placeholder="Nhập link embed hoặc Calendar ID"
-                    aria-label="Google Calendar URL"
-                  />
-                  <small style={{ display: 'block', marginTop: '4px', color: '#64748b' }}>
-                    Có thể nhập link nhúng hoặc Calendar ID để hiển thị lịch nghỉ phép
-                  </small>
-                </div>
 
                 <h3 className="settings-section-title"><CalendarDays size={14} /> Thưởng tháng {activeTab}</h3>
                 <div className="settings-list">
