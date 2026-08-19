@@ -222,14 +222,19 @@ describe('logic.ts', () => {
       expect(splitOvertime(11.17, 1)).toEqual({ normal: 6, bonus: 5.17 })
     })
 
+    // OT 300% ngày không phải Chủ nhật vẫn tự chuyển phần vượt 2h sang Bonus
+    it('OT 300% ngày khác: 3h -> Normal: 2, Bonus: 1', () => {
+      expect(splitOvertime(3, 2, false)).toEqual({ normal: 2, bonus: 1 })
+    })
+
     // Chủ nhật: 08:00-17:30 (8.67h) -> Normal: 8.67, Bonus: 0
     it('Row 9: Chủ nhật 08:00-17:30 (8.67h) -> Normal: 8.67, Bonus: 0', () => {
-      expect(splitOvertime(8.67, 2)).toEqual({ normal: 8.67, bonus: 0 })
+      expect(splitOvertime(8.67, 2, true)).toEqual({ normal: 8.67, bonus: 0 })
     })
 
     // Chủ nhật: 08:00-20:00 (11.17h) -> Normal: 10.67, Bonus: 0.5
     it('Row 10: Chủ nhật 08:00-20:00 (11.17h) -> Normal: 10.67, Bonus: 0.5', () => {
-      expect(splitOvertime(11.17, 2)).toEqual({ normal: 10.67, bonus: 0.5 })
+      expect(splitOvertime(11.17, 2, true)).toEqual({ normal: 10.67, bonus: 0.5 })
     })
   })
 })

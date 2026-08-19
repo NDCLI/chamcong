@@ -32,6 +32,7 @@ import {
   Upload, Download, X, ChevronLeft, ChevronRight, ChevronDown
 } from 'lucide-react'
 
+const isSundayIso = (dateIso: string) => new Date(`${dateIso}T00:00:00`).getDay() === 0;
 
 function App() {
   const getInitialMonth = () => {
@@ -114,7 +115,7 @@ function App() {
             const raw2 = arr[2] || 0;
             const res0 = splitOvertime(raw0, 0);
             const res1 = splitOvertime(raw1, 1);
-            const res2 = splitOvertime(raw2, 2);
+            const res2 = splitOvertime(raw2, 2, isSundayIso(dateKey));
             const totalBonus = Math.round((res0.bonus + res1.bonus + res2.bonus) * 100) / 100;
 
             newOt[dateKey] = [raw0, raw1, raw2, totalBonus];
@@ -399,7 +400,7 @@ function App() {
       // Calculate total bonus dynamically for this row across all columns
       const res0 = splitOvertime(newOT[0] || 0, 0);
       const res1 = splitOvertime(newOT[1] || 0, 1);
-      const res2 = splitOvertime(newOT[2] || 0, 2);
+      const res2 = splitOvertime(newOT[2] || 0, 2, isSundayIso(dateIso));
       newOT[3] = Math.round((res0.bonus + res1.bonus + res2.bonus) * 100) / 100;
 
       return {
@@ -651,7 +652,7 @@ function App() {
 
       const res0 = splitOvertime(ot[0] || 0, 0);
       const res1 = splitOvertime(ot[1] || 0, 1);
-      const res2 = splitOvertime(ot[2] || 0, 2);
+      const res2 = splitOvertime(ot[2] || 0, 2, d.getDay() === 0);
 
       h150 += res0.normal;
       h200 += res1.normal;
@@ -739,7 +740,7 @@ function App() {
 
                   const rowRes0 = splitOvertime(ot[0] || 0, 0);
                   const rowRes1 = splitOvertime(ot[1] || 0, 1);
-                  const rowRes2 = splitOvertime(ot[2] || 0, 2);
+                  const rowRes2 = splitOvertime(ot[2] || 0, 2, d.getDay() === 0);
                   const rowBonus = Math.round((rowRes0.bonus + rowRes1.bonus + rowRes2.bonus) * 100) / 100;
 
                   let rowClass = "wk";

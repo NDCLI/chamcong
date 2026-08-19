@@ -435,11 +435,13 @@ export function datesOfMonth(year: number, month: number): Date[] {
  *     > 8.67h: Ban ngày (Normal 4, Bonus 4.67), Ban tối (nếu over > 2 thì Normal += over - 0.5, Bonus += 0.5, ngược lại Normal += over)
  *              (VD: 11.17h -> Normal 6, Bonus 5.17)
  * - Chủ nhật / Lễ (colIndex = 2 / 300%):
+ *   - Ngày không phải Chủ nhật: áp dụng mốc 2h như OT 150%.
+ *   - Chủ nhật (isSunday = true):
  *     <= 8.67h: Normal = val, Bonus = 0 (VD: 8.67h -> Normal 8.67, Bonus 0)
  *     > 8.67h: Ban ngày (Normal 8.67, Bonus 0), Ban tối (nếu over > 2 thì Normal += over - 0.5, Bonus += 0.5, ngược lại Normal += over)
  *              (VD: 11.17h -> Normal 10.67, Bonus 0.5)
  */
-export function splitOvertime(val: number, colIndex: number = 0): { normal: number; bonus: number } {
+export function splitOvertime(val: number, colIndex: number = 0, isSunday: boolean = false): { normal: number; bonus: number } {
   if (val <= 0) return { normal: 0, bonus: 0 };
 
   if (colIndex === 0) {
@@ -476,6 +478,16 @@ export function splitOvertime(val: number, colIndex: number = 0): { normal: numb
   }
 
   if (colIndex === 2) {
+    if (!isSunday) {
+      if (val <= 2) {
+        return { normal: val, bonus: 0 };
+      }
+      return {
+        normal: 2,
+        bonus: Math.round((val - 2) * 100) / 100
+      };
+    }
+
     if (val <= 8.67) {
       return { normal: val, bonus: 0 };
     }
