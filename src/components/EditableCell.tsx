@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { splitOvertime } from '../logic';
 
 interface EditableCellProps {
   value: number | string;
@@ -22,8 +23,9 @@ export const EditableCell = ({ value, onChange, rowIndex, colIndex }: EditableCe
 
   const handleBlur = () => {
     const numeric = parseFloat(localValue.replace(/,/g, '.'));
-    if (!isNaN(numeric) && numeric > 2) {
-      setLocalValue('2');
+    if (!isNaN(numeric) && numeric > 0 && colIndex < 3) {
+      const { normal } = splitOvertime(numeric, colIndex);
+      setLocalValue(normal > 0 ? String(normal) : '');
     }
     onChange(localValue);
   };
@@ -31,8 +33,9 @@ export const EditableCell = ({ value, onChange, rowIndex, colIndex }: EditableCe
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const numeric = parseFloat(localValue.replace(/,/g, '.'));
-      if (!isNaN(numeric) && numeric > 2) {
-        setLocalValue('2');
+      if (!isNaN(numeric) && numeric > 0 && colIndex < 3) {
+        const { normal } = splitOvertime(numeric, colIndex);
+        setLocalValue(normal > 0 ? String(normal) : '');
       }
       onChange(localValue);
       const nextRow = rowIndex + 1;

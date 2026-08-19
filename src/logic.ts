@@ -423,3 +423,74 @@ export function datesOfMonth(year: number, month: number): Date[] {
   }
   return out;
 }
+
+/**
+ * Tách giờ tăng ca thành Normal OT và Bonus OT theo quy tắc bảng tham chiếu:
+ * - Ngày thường (colIndex = 0 / 150%):
+ *     <= 2h: Normal = val, Bonus = 0
+ *     > 2h: Bonus = 0.5, Normal = val - 0.5 (VD: 2.5h -> Normal 2, Bonus 0.5; 3h -> Normal 2.5, Bonus 0.5; 3.5h -> Normal 3, Bonus 0.5)
+ * - Thứ 7 (colIndex = 1 / 200%):
+ *     <= 4h: Normal = val, Bonus = 0
+ *     4h < val <= 8.67h: Normal = 4, Bonus = val - 4 (VD: 8.67h -> Normal 4, Bonus 4.67)
+ *     > 8.67h: Ban ngày (Normal 4, Bonus 4.67), Ban tối (nếu over > 2 thì Normal += over - 0.5, Bonus += 0.5, ngược lại Normal += over)
+ *              (VD: 11.17h -> Normal 6, Bonus 5.17)
+ * - Chủ nhật / Lễ (colIndex = 2 / 300%):
+ *     <= 8.67h: Normal = val, Bonus = 0 (VD: 8.67h -> Normal 8.67, Bonus 0)
+ *     > 8.67h: Ban ngày (Normal 8.67, Bonus 0), Ban tối (nếu over > 2 thì Normal += over - 0.5, Bonus += 0.5, ngược lại Normal += over)
+ *              (VD: 11.17h -> Normal 10.67, Bonus 0.5)
+ */
+export function splitOvertime(val: number, colIndex: number = 0): { normal: number; bonus: number } {
+  if (val <= 0) return { normal: 0, bonus: 0 };
+
+  if (colIndex === 0) {
+    if (val <= 2) {
+      return { normal: val, bonus: 0 };
+    }
+    return {
+      normal: Math.round((val - 0.5) * 100) / 100,
+      bonus: 0.5
+    };
+  }
+
+  if (colIndex === 1) {
+    if (val <= 4) {
+      return { normal: val, bonus: 0 };
+    }
+    if (val <= 8.67) {
+      return {
+        normal: 4,
+        bonus: Math.round((val - 4) * 100) / 100
+      };
+    }
+    const over = val - 8.67;
+    let extraNormal = over;
+    let extraBonus = 0;
+    if (over > 2) {
+      extraNormal = over - 0.5;
+      extraBonus = 0.5;
+    }
+    return {
+      normal: Math.round((4 + extraNormal) * 100) / 100,
+      bonus: Math.round((4.67 + extraBonus) * 100) / 100
+    };
+  }
+
+  if (colIndex === 2) {
+    if (val <= 8.67) {
+      return { normal: val, bonus: 0 };
+    }
+    const over = val - 8.67;
+    let extraNormal = over;
+    let extraBonus = 0;
+    if (over > 2) {
+      extraNormal = over - 0.5;
+      extraBonus = 0.5;
+    }
+    return {
+      normal: Math.round((8.67 + extraNormal) * 100) / 100,
+      bonus: Math.round(extraBonus * 100) / 100
+    };
+  }
+
+  return { normal: val, bonus: 0 };
+}

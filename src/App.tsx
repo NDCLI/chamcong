@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 import './App.css'
-import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday } from './logic'
+import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday, splitOvertime } from './logic'
 import type { AppData, AppSettings, Allowance, SyncStatus } from './types'
 import { DEFAULT_SETTINGS, WEEKDAYS } from './constants'
 import { storageDataKey, storageSyncKey, getLocalDateStr } from './storage'
@@ -99,7 +99,7 @@ function App() {
     return initData;
   };
 
-  // Migration: if any OT column > 2, split into normal (2) and bonus (excess)
+  // Migration: migrate old data and split OT according to rules
   const migrateOldLateData = (appData: AppData): AppData => {
     const migrated = { ...appData, months: { ...appData.months } };
     for (const monthKey of Object.keys(migrated.months)) {
@@ -109,28 +109,15 @@ function App() {
         for (const dateKey of Object.keys(newOt)) {
           const arr = newOt[dateKey];
           if (arr && arr.length >= 3) {
-            let col0 = arr[0] || 0;
-            let col1 = arr[1] || 0;
-            let col2 = arr[2] || 0;
-            let bonus = 0;
+            const res0 = splitOvertime(arr[0] || 0, 0);
+            const res1 = splitOvertime(arr[1] || 0, 1);
+            const res2 = splitOvertime(arr[2] || 0, 2);
+            const totalBonus = Math.round((res0.bonus + res1.bonus + res2.bonus) * 100) / 100;
 
-            if (col0 > 2) {
-              bonus += Math.round((col0 - 2) * 100) / 100;
-              col0 = 2;
-            }
-            if (col1 > 2) {
-              bonus += Math.round((col1 - 2) * 100) / 100;
-              col1 = 2;
-            }
-            if (col2 > 2) {
-              bonus += Math.round((col2 - 2) * 100) / 100;
-              col2 = 2;
-            }
-
-            if (bonus > 0) {
-              newOt[dateKey] = [col0, col1, col2, bonus];
-            } else if (arr.length >= 4 && arr[3] !== 0 && col0 <= 2 && col1 <= 2 && col2 <= 2) {
-              newOt[dateKey] = [col0, col1, col2, 0];
+            if (totalBonus > 0 || res0.normal !== (arr[0] || 0) || res1.normal !== (arr[1] || 0) || res2.normal !== (arr[2] || 0)) {
+              newOt[dateKey] = [res0.normal, res1.normal, res2.normal, totalBonus];
+            } else if (arr.length >= 4 && arr[3] !== 0) {
+              newOt[dateKey] = [res0.normal, res1.normal, res2.normal, 0];
             }
           }
         }
@@ -407,21 +394,21 @@ function App() {
       const newOT = [...currentOT];
       const numericVal = pf(value);
 
-      if (numericVal > 2) {
-        newOT[otIndex] = 2;
-        newOT[3] = Math.round((numericVal - 2) * 100) / 100;
-      } else {
-        newOT[otIndex] = numericVal;
-        // If this column is reduced to <= 2, recalculate bonus from all columns
-        let remainingBonus = 0;
-        for (let i = 0; i < 3; i++) {
-          const val = i === otIndex ? numericVal : (newOT[i] || 0);
-          if (val > 2) {
-            remainingBonus += Math.round((val - 2) * 100) / 100;
-          }
+      const split = splitOvertime(numericVal, otIndex);
+      newOT[otIndex] = split.normal;
+
+      // Calculate total bonus for this row across all columns
+      let totalRowBonus = 0;
+      for (let i = 0; i < 3; i++) {
+        if (i === otIndex) {
+          totalRowBonus += split.bonus;
+        } else {
+          const colVal = newOT[i] || 0;
+          const colSplit = splitOvertime(colVal, i);
+          totalRowBonus += colSplit.bonus;
         }
-        newOT[3] = remainingBonus;
       }
+      newOT[3] = Math.round(totalRowBonus * 100) / 100;
 
       return {
         ...prev,
@@ -665,42 +652,35 @@ function App() {
 
     let h150 = 0, h200 = 0, h300 = 0;
     let hBonus150 = 0, hBonus200 = 0, hBonus300 = 0;
-    const BONUS_THRESHOLD = 2; // Giờ OT vượt quá 2h sẽ tính bonus
     // Only sum OT for dates that are actually in this month's range
     dates.forEach(d => {
       const dateIso = getLocalDateStr(d);
       const ot = mData.ot[dateIso] || [0, 0, 0, 0];
       const wd = WEEKDAYS[d.getDay()];
 
-      // Normal OT: capped at threshold per column
-      const normal150 = Math.min(ot[0] || 0, BONUS_THRESHOLD);
-      const normal200 = Math.min(ot[1] || 0, BONUS_THRESHOLD);
-      const normal300 = Math.min(ot[2] || 0, BONUS_THRESHOLD);
+      const res0 = splitOvertime(ot[0] || 0, 0);
+      const res1 = splitOvertime(ot[1] || 0, 1);
+      const res2 = splitOvertime(ot[2] || 0, 2);
 
-      h150 += normal150;
-      h200 += normal200;
-      h300 += normal300;
+      h150 += res0.normal;
+      h200 += res1.normal;
+      h300 += res2.normal;
 
-      // Bonus OT: from excess or stored ot[3]
-      const bonus150 = Math.max((ot[0] || 0) - BONUS_THRESHOLD, 0);
-      const bonus200 = Math.max((ot[1] || 0) - BONUS_THRESHOLD, 0);
-      const bonus300 = Math.max((ot[2] || 0) - BONUS_THRESHOLD, 0);
-      const storedBonus = ot[3] || 0;
+      hBonus150 += res0.bonus;
+      hBonus200 += res1.bonus;
+      hBonus300 += res2.bonus;
 
-      if (storedBonus > 0 && bonus150 === 0 && bonus200 === 0 && bonus300 === 0) {
+      // Also account for stored ot[3] if inputs were already split
+      if (res0.bonus === 0 && res1.bonus === 0 && res2.bonus === 0 && (ot[3] || 0) > 0) {
         const isHol = isHoliday(d, defaultConfig.holidays);
         const isTetDay = isTet(d);
-        if (wd === 'CN' || isHol || isTetDay || Boolean(isLunarHoliday(d)) || normal300 > 0) {
-          hBonus300 += storedBonus;
-        } else if (wd === 'T7' || normal200 > 0) {
-          hBonus200 += storedBonus;
+        if (wd === 'CN' || isHol || isTetDay || Boolean(isLunarHoliday(d)) || res2.normal > 0) {
+          hBonus300 += ot[3];
+        } else if (wd === 'T7' || res1.normal > 0) {
+          hBonus200 += ot[3];
         } else {
-          hBonus150 += storedBonus;
+          hBonus150 += ot[3];
         }
-      } else {
-        hBonus150 += bonus150;
-        hBonus200 += bonus200;
-        hBonus300 += bonus300;
       }
     });
 
@@ -792,7 +772,7 @@ function App() {
                       <td>{wd}</td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={Math.min(ot[0] || 0, 2)}
+                          value={ot[0] ? ot[0] : ''}
                           rowIndex={rIdx}
                           colIndex={0}
                           onChange={val => updateMonthOT(month, dateIso, 0, val)}
@@ -800,7 +780,7 @@ function App() {
                       </td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={Math.min(ot[1] || 0, 2)}
+                          value={ot[1] ? ot[1] : ''}
                           rowIndex={rIdx}
                           colIndex={1}
                           onChange={val => updateMonthOT(month, dateIso, 1, val)}
@@ -808,7 +788,7 @@ function App() {
                       </td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={Math.min(ot[2] || 0, 2)}
+                          value={ot[2] ? ot[2] : ''}
                           rowIndex={rIdx}
                           colIndex={2}
                           onChange={val => updateMonthOT(month, dateIso, 2, val)}
@@ -818,8 +798,8 @@ function App() {
                         {(() => {
                           const rowBonus = (ot[3] || 0) > 0
                             ? ot[3]
-                            : (Math.max((ot[0] || 0) - 2, 0) + Math.max((ot[1] || 0) - 2, 0) + Math.max((ot[2] || 0) - 2, 0));
-                          return rowBonus > 0 ? Math.round(rowBonus * 100) / 100 : '';
+                            : Math.round((splitOvertime(ot[0] || 0, 0).bonus + splitOvertime(ot[1] || 0, 1).bonus + splitOvertime(ot[2] || 0, 2).bonus) * 100) / 100;
+                          return rowBonus > 0 ? rowBonus : '';
                         })()}
                       </td>
                     </tr>

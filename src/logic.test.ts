@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday } from './logic'
+import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday, splitOvertime } from './logic'
 
 describe('logic.ts', () => {
   describe('fmt - Format currency', () => {
@@ -178,6 +178,58 @@ describe('logic.ts', () => {
     it('returns null for non-lunar holidays', () => {
       const result = isLunarHoliday(new Date(2026, 0, 1))
       expect(result === null || typeof result === 'string').toBe(true)
+    })
+  })
+
+  describe('splitOvertime - Match all cases in image reference', () => {
+    // 17:30~18:30 (1h, không nghỉ) -> Normal: 1, Bonus: 0
+    it('Row 1: 17:30~18:30 (1h) -> Normal: 1, Bonus: 0', () => {
+      expect(splitOvertime(1, 0)).toEqual({ normal: 1, bonus: 0 })
+    })
+
+    // 17:30~19:30 (1.5h, nghỉ ngơi) -> Normal: 1.5, Bonus: 0
+    it('Row 2: 17:30~19:30 (1.5h) -> Normal: 1.5, Bonus: 0', () => {
+      expect(splitOvertime(1.5, 0)).toEqual({ normal: 1.5, bonus: 0 })
+    })
+
+    // 17:30~19:30 (2h, không nghỉ) -> Normal: 2, Bonus: 0
+    it('Row 3: 17:30~19:30 (2h) -> Normal: 2, bonus: 0', () => {
+      expect(splitOvertime(2, 0)).toEqual({ normal: 2, bonus: 0 })
+    })
+
+    // 17:30~20:00 (2.5h) -> Normal: 2, Bonus: 0.5
+    it('Row 4: 17:30~20:00 (2.5h) -> Normal: 2, Bonus: 0.5', () => {
+      expect(splitOvertime(2.5, 0)).toEqual({ normal: 2, bonus: 0.5 })
+    })
+
+    // 17:30~20:30 (3h) -> Normal: 2.5, Bonus: 0.5
+    it('Row 5: 17:30~20:30 (3h) -> Normal: 2.5, Bonus: 0.5', () => {
+      expect(splitOvertime(3, 0)).toEqual({ normal: 2.5, bonus: 0.5 })
+    })
+
+    // 17:30~21:00 (3.5h) -> Normal: 3, Bonus: 0.5
+    it('Row 6: 17:30~21:00 (3.5h) -> Normal: 3, Bonus: 0.5', () => {
+      expect(splitOvertime(3.5, 0)).toEqual({ normal: 3, bonus: 0.5 })
+    })
+
+    // Thứ 7: 08:00-17:30 (8.67h) -> Normal: 4, Bonus: 4.67
+    it('Row 7: Thứ 7 08:00-17:30 (8.67h) -> Normal: 4, Bonus: 4.67', () => {
+      expect(splitOvertime(8.67, 1)).toEqual({ normal: 4, bonus: 4.67 })
+    })
+
+    // Thứ 7: 08:00-20:00 (11.17h) -> Normal: 6, Bonus: 5.17
+    it('Row 8: Thứ 7 08:00-20:00 (11.17h) -> Normal: 6, Bonus: 5.17', () => {
+      expect(splitOvertime(11.17, 1)).toEqual({ normal: 6, bonus: 5.17 })
+    })
+
+    // Chủ nhật: 08:00-17:30 (8.67h) -> Normal: 8.67, Bonus: 0
+    it('Row 9: Chủ nhật 08:00-17:30 (8.67h) -> Normal: 8.67, Bonus: 0', () => {
+      expect(splitOvertime(8.67, 2)).toEqual({ normal: 8.67, bonus: 0 })
+    })
+
+    // Chủ nhật: 08:00-20:00 (11.17h) -> Normal: 10.67, Bonus: 0.5
+    it('Row 10: Chủ nhật 08:00-20:00 (11.17h) -> Normal: 10.67, Bonus: 0.5', () => {
+      expect(splitOvertime(11.17, 2)).toEqual({ normal: 10.67, bonus: 0.5 })
     })
   })
 })
