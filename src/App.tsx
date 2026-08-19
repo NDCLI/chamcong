@@ -99,6 +99,25 @@ function App() {
     return initData;
   };
 
+  // Migration: reset index 3 (old late/early data) to 0 for all existing OT entries
+  const migrateOldLateData = (appData: AppData): AppData => {
+    const migrated = { ...appData, months: { ...appData.months } };
+    for (const monthKey of Object.keys(migrated.months)) {
+      const monthData = migrated.months[monthKey];
+      if (monthData?.ot) {
+        const newOt = { ...monthData.ot };
+        for (const dateKey of Object.keys(newOt)) {
+          const arr = newOt[dateKey];
+          if (arr && arr.length >= 4 && arr[3] !== 0) {
+            newOt[dateKey] = [arr[0] || 0, arr[1] || 0, arr[2] || 0, 0];
+          }
+        }
+        migrated.months[monthKey] = { ...monthData, ot: newOt };
+      }
+    }
+    return migrated;
+  };
+
   const [user, setUser] = useState<User | null>(null);
   const [guestName, setGuestName] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -224,7 +243,7 @@ function App() {
           const localTime = Number(localData.lastUpdated) || 0;
 
           if (hasSavedLocalData && hasMeaningfulData(localData) && cloudTime > 0 && localTime > cloudTime) {
-            setData(localData);
+            setData(migrateOldLateData(localData));
             setSyncStatus({ state: 'syncing', message: '⏳ Dữ liệu trên máy mới hơn, đang đồng bộ lên Cloud...' });
             const wasUploaded = await syncAccountToCloud(user.uid, localData);
             setSyncStatus({
@@ -235,18 +254,18 @@ function App() {
             });
           } else {
             const cloudAccountData = cloudData as AppData;
-            setData(cloudAccountData);
+            setData(migrateOldLateData(cloudAccountData));
             localStorage.setItem(storageDataKey(user.uid), JSON.stringify(cloudAccountData));
             setSyncStatus({ state: 'success', message: '✅ Đã đồng bộ dữ liệu theo tài khoản.' });
           }
         } else {
-          setData(localData);
+          setData(migrateOldLateData(localData));
           await syncAccountToCloud(user.uid, localData);
           setSyncStatus({ state: 'success', message: '✅ Đã tạo dữ liệu Cloud cho tài khoản.' });
         }
       } catch (e: unknown) {
         console.error('Account sync load error:', e);
-        setData(localData);
+        setData(migrateOldLateData(localData));
         setSyncStatus({ state: 'error', message: '❌ Không tải được dữ liệu tài khoản, đang dùng dữ liệu máy này.' });
       } finally {
         setAccountHydrated(true);
@@ -277,7 +296,7 @@ function App() {
         try {
           const parsedData: unknown = JSON.parse(saved);
           if (isStoredAppData(parsedData)) {
-            setData(parsedData);
+            setData(migrateOldLateData(parsedData));
             return;
           }
         } catch {
@@ -486,7 +505,7 @@ function App() {
       if (user) localStorage.setItem(storageSyncKey(user.uid), syncCode);
       const cloudData = await syncFromCloud(syncCode);
       if (cloudData) {
-        setData(cloudData);
+        setData(migrateOldLateData(cloudData));
         setAutoSyncCode(syncCode.trim());
         setSyncStatus({ state: 'success', message: '✅ Tải về thành công! Tự động đồng bộ đã bật.' });
       }
@@ -522,7 +541,7 @@ function App() {
 
       const cloudData = await syncFromCloud(hashedCode);
       if (cloudData) {
-        setData(cloudData as AppData);
+        setData(migrateOldLateData(cloudData as AppData));
         setSyncStatus({ state: 'success', message: '✅ Đã tải dữ liệu từ Cloud.' });
       } else {
         setSyncStatus({ state: 'success', message: '✅ Bắt đầu với dữ liệu mới.' });
@@ -606,15 +625,23 @@ function App() {
     const dates = datesOfMonth(data.year, month);
     const mData = data.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
 
-    let h150 = 0, h200 = 0, h300 = 0, hLate = 0;
+    let h150 = 0, h200 = 0, h300 = 0;
+    let hBonus150 = 0, hBonus200 = 0, hBonus300 = 0;
+    const BONUS_THRESHOLD = 2; // Giờ OT vượt quá 2h sẽ tính bonus
     // Only sum OT for dates that are actually in this month's range
     dates.forEach(d => {
       const dateIso = getLocalDateStr(d);
       const ot = mData.ot[dateIso] || [0, 0, 0, 0];
-      h150 += ot[0] || 0;
-      h200 += ot[1] || 0;
-      h300 += ot[2] || 0;
-      hLate += ot[3] || 0;
+
+      // Normal OT: capped at threshold per column
+      h150 += Math.min(ot[0] || 0, BONUS_THRESHOLD);
+      h200 += Math.min(ot[1] || 0, BONUS_THRESHOLD);
+      h300 += Math.min(ot[2] || 0, BONUS_THRESHOLD);
+
+      // Bonus OT: excess beyond threshold, auto-classified by day type rate
+      hBonus150 += Math.max((ot[0] || 0) - BONUS_THRESHOLD, 0);
+      hBonus200 += Math.max((ot[1] || 0) - BONUS_THRESHOLD, 0);
+      hBonus300 += Math.max((ot[2] || 0) - BONUS_THRESHOLD, 0);
     });
 
     // Safe settings with defaults for old data
@@ -650,8 +677,8 @@ function App() {
       other_deduction: deductionSum
     };
 
-    const s = calc(data.lcb, h150, h200, h300, mData.other, hLate, allowanceSum, bonusSum, month, data.dependents, customConfig);
-    const totalDeductions = s.bhxh + s.bhyt + s.bhtn + s.cd + s.late_deduction + deductionSum + s.pit;
+    const s = calc(data.lcb, h150, h200, h300, mData.other, hBonus150, hBonus200, hBonus300, allowanceSum, bonusSum, month, data.dependents, customConfig);
+    const totalDeductions = s.bhxh + s.bhyt + s.bhtn + s.cd + deductionSum + s.pit;
     const todayIso = getLocalDateStr(new Date());
     // Removed per UI cleanup: no per-month summary needed here
     // Cleaned up month summary variables
@@ -676,7 +703,7 @@ function App() {
                   <th>OT 150%</th>
                   <th>OT 200%</th>
                   <th>OT 300%</th>
-                  <th>Late/Early Leave</th>
+                  <th>Bonus OT</th>
                 </tr>
               </thead>
               <tbody>
@@ -727,13 +754,11 @@ function App() {
                           onChange={val => updateMonthOT(month, dateIso, 2, val)}
                         />
                       </td>
-                      <td className="editable-cell">
-                        <EditableCell
-                          value={ot[3]}
-                          rowIndex={rIdx}
-                          colIndex={3}
-                          onChange={val => updateMonthOT(month, dateIso, 3, val)}
-                        />
+                      <td className="bonus-cell">
+                        {(() => {
+                          const rowBonus = Math.max((ot[0] || 0) - 2, 0) + Math.max((ot[1] || 0) - 2, 0) + Math.max((ot[2] || 0) - 2, 0);
+                          return rowBonus > 0 ? Math.round(rowBonus * 100) / 100 : '';
+                        })()}
                       </td>
                     </tr>
                   )
@@ -743,7 +768,7 @@ function App() {
                   <td>{h150}h</td>
                   <td>{h200}h</td>
                   <td>{h300}h</td>
-                  <td>{hLate}h</td>
+                  <td>{Math.round((hBonus150 + hBonus200 + hBonus300) * 100) / 100}h</td>
                 </tr>
               </tbody>
             </table>
@@ -762,6 +787,7 @@ function App() {
               <div className="breakdown-card additions">
                 <h3><Plus size={14} strokeWidth={2.5} /> TĂNG CA/THƯỞNG</h3>
                 <div className="bd-row"><span>Tiền OT:</span> <span>{fmt(s.ovt)} VNĐ</span></div>
+                {s.bonus_ot_pay > 0 && <div className="bd-row"><span>Bonus OT:</span> <span>{fmt(s.bonus_ot_pay)} VNĐ</span></div>}
                 {settingsBonuses.map((bn, idx) => {
                   const monthAmount = bonusAmounts[idx] ?? bn.amount;
                   return (
@@ -807,7 +833,6 @@ function App() {
                 <div className="bd-row"><span>BHYT ({currentSettings.bhyt_pct}%):</span> <span>{fmt(s.bhyt)} VNĐ</span></div>
                 <div className="bd-row"><span>BHTN ({currentSettings.bhtn_pct}%):</span> <span>{fmt(s.bhtn)} VNĐ</span></div>
                 <div className="bd-row"><span>Công đoàn:</span> <span>{fmt(s.cd)} VNĐ</span></div>
-                {s.late_deduction > 0 && <div className="bd-row"><span>Đi muộn/về sớm ({hLate}h):</span> <span>{fmt(s.late_deduction)} VNĐ</span></div>}
                 {currentSettings.other_deduction > 0 && <div className="bd-row"><span>Trừ khác:</span> <span>{fmt(currentSettings.other_deduction)} VNĐ</span></div>}
                 {deductions.map((ded, idx) => (
                   <div className="bd-row" key={`ded-${idx}`}><span>{ded.name || 'Khoản trừ'}:</span> <span>{fmt(ded.amount)} VNĐ</span></div>

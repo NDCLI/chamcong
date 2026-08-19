@@ -1,5 +1,5 @@
 export interface MonthOTData {
-  [dateIso: string]: number[]; // [150, 200, 300, late]
+  [dateIso: string]: number[]; // [150, 200, 300, bonus]
 }
 
 export interface MonthData {
