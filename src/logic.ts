@@ -428,7 +428,7 @@ export function datesOfMonth(year: number, month: number): Date[] {
  * Tách giờ tăng ca thành Normal OT và Bonus OT theo quy tắc bảng tham chiếu:
  * - Ngày thường (colIndex = 0 / 150%):
  *     <= 2h: Normal = val, Bonus = 0
- *     > 2h: Bonus = 0.5, Normal = val - 0.5 (VD: 2.5h -> Normal 2, Bonus 0.5; 3h -> Normal 2.5, Bonus 0.5; 3.5h -> Normal 3, Bonus 0.5)
+ *     > 2h: Normal = 2, Bonus = val - 2 (VD: 2.5h -> Bonus 0.5; 3h -> Bonus 1; 3.5h -> Bonus 1.5)
  * - Thứ 7 (colIndex = 1 / 200%):
  *     <= 4h: Normal = val, Bonus = 0
  *     4h < val <= 8.67h: Normal = 4, Bonus = val - 4 (VD: 8.67h -> Normal 4, Bonus 4.67)
@@ -447,8 +447,8 @@ export function splitOvertime(val: number, colIndex: number = 0): { normal: numb
       return { normal: val, bonus: 0 };
     }
     return {
-      normal: Math.round((val - 0.5) * 100) / 100,
-      bonus: 0.5
+      normal: 2,
+      bonus: Math.round((val - 2) * 100) / 100
     };
   }
 

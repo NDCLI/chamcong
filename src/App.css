@@ -864,6 +864,18 @@ h1 svg, h2 svg, h3 svg { vertical-align: middle; margin-right: 5px; flex-shrink:
 @media (max-width: 560px) { .ambient-card { padding: 18px; } .ambient-message { padding: 18px; } .ambient-coins span { transform: scale(.78); } }
 @media (prefers-reduced-motion: reduce) { .ambient-orb, .ambient-message, .ambient-message-icon, .ambient-confetti i, .ambient-coins span { animation: none; } }
 
+/* Text-free celebration: floating stars and coins */
+.ambient-stars { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.ambient-stars i { position: absolute; color: #fef3c7; font-size: 1.15rem; font-style: normal; text-shadow: 0 0 14px rgba(251,191,36,.8); animation: ambientStar 4.2s ease-in-out infinite; }
+.ambient-stars i:nth-child(3n) { color: #a7f3d0; text-shadow: 0 0 14px rgba(74,222,128,.65); animation-delay: -1.4s; }
+.ambient-stars i:nth-child(3n + 2) { color: #bae6fd; text-shadow: 0 0 14px rgba(56,189,248,.65); animation-delay: -2.8s; }
+.ambient-stars i:nth-child(1) { left: 8%; top: 18%; } .ambient-stars i:nth-child(2) { left: 21%; top: 62%; } .ambient-stars i:nth-child(3) { left: 34%; top: 12%; } .ambient-stars i:nth-child(4) { left: 49%; top: 72%; }
+.ambient-stars i:nth-child(5) { left: 66%; top: 16%; } .ambient-stars i:nth-child(6) { left: 83%; top: 31%; } .ambient-stars i:nth-child(7) { left: 74%; top: 77%; } .ambient-stars i:nth-child(8) { left: 11%; top: 82%; }
+.ambient-stars i:nth-child(9) { left: 91%; top: 68%; } .ambient-stars i:nth-child(10) { left: 42%; top: 39%; } .ambient-stars i:nth-child(11) { left: 58%; top: 53%; } .ambient-stars i:nth-child(12) { left: 27%; top: 36%; }
+.ambient-coins span:nth-child(4) { left: 39%; top: 22%; animation-delay: -2.4s; width: 27px; height: 27px; font-size: .82rem; }
+.ambient-coins span:nth-child(5) { right: 43%; bottom: 27%; animation-delay: -4.1s; width: 24px; height: 24px; font-size: .74rem; }
+@keyframes ambientStar { 0%, 100% { transform: translateY(5px) scale(.65) rotate(0); opacity: .35; } 50% { transform: translateY(-10px) scale(1.2) rotate(28deg); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ambient-stars i { animation: none; } }
 .account-fab-wrapper {
   position: relative;
   display: inline-flex;

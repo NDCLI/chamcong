@@ -202,14 +202,14 @@ describe('logic.ts', () => {
       expect(splitOvertime(2.5, 0)).toEqual({ normal: 2, bonus: 0.5 })
     })
 
-    // 17:30~20:30 (3h) -> Normal: 2.5, Bonus: 0.5
-    it('Row 5: 17:30~20:30 (3h) -> Normal: 2.5, Bonus: 0.5', () => {
-      expect(splitOvertime(3, 0)).toEqual({ normal: 2.5, bonus: 0.5 })
+    // 17:30~20:30 (3h) -> Normal: 2, Bonus: 1
+    it('Row 5: 17:30~20:30 (3h) -> Normal: 2, Bonus: 1', () => {
+      expect(splitOvertime(3, 0)).toEqual({ normal: 2, bonus: 1 })
     })
 
-    // 17:30~21:00 (3.5h) -> Normal: 3, Bonus: 0.5
-    it('Row 6: 17:30~21:00 (3.5h) -> Normal: 3, Bonus: 0.5', () => {
-      expect(splitOvertime(3.5, 0)).toEqual({ normal: 3, bonus: 0.5 })
+    // 17:30~21:00 (3.5h) -> Normal: 2, Bonus: 1.5
+    it('Row 6: 17:30~21:00 (3.5h) -> Normal: 2, Bonus: 1.5', () => {
+      expect(splitOvertime(3.5, 0)).toEqual({ normal: 2, bonus: 1.5 })
     })
 
     // Thứ 7: 08:00-17:30 (8.67h) -> Normal: 4, Bonus: 4.67

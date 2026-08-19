@@ -873,23 +873,17 @@ function App() {
               <span>{fmt(s.net)} VNĐ</span>
             </div>
 
-            {/* A small celebratory pause below the net salary */}
-            <div className="ambient-card" aria-label="Lời nhắn chúc mừng ngày công">
+            {/* Decorative animated background below the net salary */}
+            <div className="ambient-card" aria-hidden="true">
               <div className="ambient-orb ambient-orb-1" />
               <div className="ambient-orb ambient-orb-2" />
               <div className="ambient-orb ambient-orb-3" />
               <div className="ambient-grid" />
-              <div className="ambient-confetti" aria-hidden="true">
-                <i /><i /><i /><i /><i /><i /><i /><i />
+              <div className="ambient-stars">
+                <i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i>
               </div>
-              <div className="ambient-coins" aria-hidden="true">
-                <span>₫</span><span>₫</span><span>₫</span>
-              </div>
-              <div className="ambient-message">
-                <span className="ambient-message-icon" aria-hidden="true">✦</span>
-                <p className="ambient-kicker">HOÀN THÀNH THÁNG NÀY</p>
-                <strong>Mỗi ngày chăm chỉ đều đáng tự hào!</strong>
-                <p>Chúc bạn một tháng làm việc thật nhiều niềm vui.</p>
+              <div className="ambient-coins">
+                <span>₫</span><span>₫</span><span>₫</span><span>₫</span><span>₫</span>
               </div>
             </div>
           </div>
