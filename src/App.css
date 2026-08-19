@@ -44,11 +44,14 @@ body::before {
   max-width: 1420px;
   margin: 0 auto;
   padding: 4px 10px;
-  animation: pageIn .45s ease both;
+  /* Deliberately no `both` fill-mode: a retained transform (even an identity
+     matrix) would make this element the containing block for position: fixed
+     descendants, which breaks .modal-overlay's viewport anchoring. */
+  animation: pageIn .45s ease;
   min-height: 100vh;
 }
 
-@keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
 .header {
   position: relative;
@@ -756,6 +759,12 @@ h1 svg, h2 svg, h3 svg { vertical-align: middle; margin-right: 5px; flex-shrink:
   to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
+/* Mobile variant: sheet anchored to the header, no horizontal centering */
+@keyframes dropdownSheetIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .month-dropdown-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1071,4 +1080,183 @@ h1 svg, h2 svg, h3 svg { vertical-align: middle; margin-right: 5px; flex-shrink:
   color: #fff;
   border-color: transparent;
   transform: translateY(-1px);
+}
+
+/* ===== MOBILE / TABLET OPTIMISATION ===== */
+
+@media (max-width: 720px) {
+  /* Both popovers stop anchoring to their small trigger button and instead
+     become full-width sheets anchored to the header, so they can never be
+     clipped by the viewport edge. */
+  .header-month-nav,
+  .account-fab-wrapper.account-in-header {
+    position: static;
+  }
+
+  .month-dropdown-menu,
+  .account-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-width: none;
+    transform: none;
+    max-height: min(70vh, calc(100vh - 140px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    animation: dropdownSheetIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  .month-dropdown-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .month-dropdown-item {
+    padding: 12px 0;
+    font-size: 0.85rem;
+  }
+
+  .account-menu-logout,
+  .account-menu-btn {
+    padding: 11px 12px;
+  }
+}
+
+@media (max-width: 900px) {
+  /* Let the page scroll as one column instead of nesting two independent
+     scroll areas inside a fixed-height shell. */
+  .tab-content {
+    min-height: 0;
+    overflow: visible;
+    padding: 8px;
+  }
+
+  .month-table-container,
+  .breakdown-container {
+    height: auto;
+    overflow: visible;
+  }
+
+  .month-content {
+    height: auto;
+    gap: 12px;
+  }
+
+  .landing-features {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-container {
+    padding: 4px 6px;
+  }
+
+  .header {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .header-top {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header-controls {
+    gap: 8px;
+    row-gap: 8px;
+  }
+
+  .header-data-group {
+    padding-left: 0;
+    border-left: none;
+    margin-left: auto;
+  }
+
+  /* 16px minimum stops iOS Safari from auto-zooming on focus. */
+  .input-group input,
+  .form-group input,
+  .form-group textarea,
+  .settings-item-row input,
+  .account-menu-input,
+  .other-input,
+  .editable-cell input {
+    font-size: 16px;
+  }
+
+  /* Wider day/weekday columns so dates stay readable on a narrow screen. */
+  .month-table-container {
+    --col-day: 12%;
+    --col-weekday: 13%;
+    --col-ot: 18.75%;
+  }
+
+  .data-table th {
+    padding: 8px 2px;
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+  }
+
+  .data-table td {
+    height: 34px;
+    padding: 2px 2px;
+  }
+
+  /* Label column can no longer afford a fixed 145px on a 360px viewport. */
+  .bd-row,
+  .net-salary {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .bd-row > .other-input,
+  .bd-row .other-input {
+    width: 100% !important;
+    max-width: 140px;
+  }
+
+  .net-salary {
+    font-size: 0.92rem;
+  }
+
+  .modal-content {
+    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+    max-height: 92vh;
+  }
+
+  .settings-modal {
+    width: 100vw !important;
+  }
+
+  .modal-actions .btn {
+    flex: 1 1 auto;
+  }
+
+  .btn-danger {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 0.9rem;
+  }
+
+  .account-fab span {
+    max-width: 88px;
+  }
+
+  .month-dropdown-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .ambient-card {
+    flex: 0 0 auto;
+    min-height: 220px;
+  }
 }
