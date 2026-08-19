@@ -99,7 +99,7 @@ function App() {
     return initData;
   };
 
-  // Migration: reset index 3 (old late/early data) to 0 for all existing OT entries
+  // Migration: if any OT column > 2, split into normal (2) and bonus (excess)
   const migrateOldLateData = (appData: AppData): AppData => {
     const migrated = { ...appData, months: { ...appData.months } };
     for (const monthKey of Object.keys(migrated.months)) {
@@ -108,8 +108,30 @@ function App() {
         const newOt = { ...monthData.ot };
         for (const dateKey of Object.keys(newOt)) {
           const arr = newOt[dateKey];
-          if (arr && arr.length >= 4 && arr[3] !== 0) {
-            newOt[dateKey] = [arr[0] || 0, arr[1] || 0, arr[2] || 0, 0];
+          if (arr && arr.length >= 3) {
+            let col0 = arr[0] || 0;
+            let col1 = arr[1] || 0;
+            let col2 = arr[2] || 0;
+            let bonus = 0;
+
+            if (col0 > 2) {
+              bonus += Math.round((col0 - 2) * 100) / 100;
+              col0 = 2;
+            }
+            if (col1 > 2) {
+              bonus += Math.round((col1 - 2) * 100) / 100;
+              col1 = 2;
+            }
+            if (col2 > 2) {
+              bonus += Math.round((col2 - 2) * 100) / 100;
+              col2 = 2;
+            }
+
+            if (bonus > 0) {
+              newOt[dateKey] = [col0, col1, col2, bonus];
+            } else if (arr.length >= 4 && arr[3] !== 0 && col0 <= 2 && col1 <= 2 && col2 <= 2) {
+              newOt[dateKey] = [col0, col1, col2, 0];
+            }
           }
         }
         migrated.months[monthKey] = { ...monthData, ot: newOt };
@@ -383,7 +405,23 @@ function App() {
       const monthData = prev.months[month] || { other: 0, ot: {} };
       const currentOT = monthData.ot[dateIso] || [0, 0, 0, 0];
       const newOT = [...currentOT];
-      newOT[otIndex] = pf(value);
+      const numericVal = pf(value);
+
+      if (numericVal > 2) {
+        newOT[otIndex] = 2;
+        newOT[3] = Math.round((numericVal - 2) * 100) / 100;
+      } else {
+        newOT[otIndex] = numericVal;
+        // If this column is reduced to <= 2, recalculate bonus from all columns
+        let remainingBonus = 0;
+        for (let i = 0; i < 3; i++) {
+          const val = i === otIndex ? numericVal : (newOT[i] || 0);
+          if (val > 2) {
+            remainingBonus += Math.round((val - 2) * 100) / 100;
+          }
+        }
+        newOT[3] = remainingBonus;
+      }
 
       return {
         ...prev,
@@ -632,16 +670,38 @@ function App() {
     dates.forEach(d => {
       const dateIso = getLocalDateStr(d);
       const ot = mData.ot[dateIso] || [0, 0, 0, 0];
+      const wd = WEEKDAYS[d.getDay()];
 
       // Normal OT: capped at threshold per column
-      h150 += Math.min(ot[0] || 0, BONUS_THRESHOLD);
-      h200 += Math.min(ot[1] || 0, BONUS_THRESHOLD);
-      h300 += Math.min(ot[2] || 0, BONUS_THRESHOLD);
+      const normal150 = Math.min(ot[0] || 0, BONUS_THRESHOLD);
+      const normal200 = Math.min(ot[1] || 0, BONUS_THRESHOLD);
+      const normal300 = Math.min(ot[2] || 0, BONUS_THRESHOLD);
 
-      // Bonus OT: excess beyond threshold, auto-classified by day type rate
-      hBonus150 += Math.max((ot[0] || 0) - BONUS_THRESHOLD, 0);
-      hBonus200 += Math.max((ot[1] || 0) - BONUS_THRESHOLD, 0);
-      hBonus300 += Math.max((ot[2] || 0) - BONUS_THRESHOLD, 0);
+      h150 += normal150;
+      h200 += normal200;
+      h300 += normal300;
+
+      // Bonus OT: from excess or stored ot[3]
+      const bonus150 = Math.max((ot[0] || 0) - BONUS_THRESHOLD, 0);
+      const bonus200 = Math.max((ot[1] || 0) - BONUS_THRESHOLD, 0);
+      const bonus300 = Math.max((ot[2] || 0) - BONUS_THRESHOLD, 0);
+      const storedBonus = ot[3] || 0;
+
+      if (storedBonus > 0 && bonus150 === 0 && bonus200 === 0 && bonus300 === 0) {
+        const isHol = isHoliday(d, defaultConfig.holidays);
+        const isTetDay = isTet(d);
+        if (wd === 'CN' || isHol || isTetDay || Boolean(isLunarHoliday(d)) || normal300 > 0) {
+          hBonus300 += storedBonus;
+        } else if (wd === 'T7' || normal200 > 0) {
+          hBonus200 += storedBonus;
+        } else {
+          hBonus150 += storedBonus;
+        }
+      } else {
+        hBonus150 += bonus150;
+        hBonus200 += bonus200;
+        hBonus300 += bonus300;
+      }
     });
 
     // Safe settings with defaults for old data
@@ -732,7 +792,7 @@ function App() {
                       <td>{wd}</td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={ot[0]}
+                          value={Math.min(ot[0] || 0, 2)}
                           rowIndex={rIdx}
                           colIndex={0}
                           onChange={val => updateMonthOT(month, dateIso, 0, val)}
@@ -740,7 +800,7 @@ function App() {
                       </td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={ot[1]}
+                          value={Math.min(ot[1] || 0, 2)}
                           rowIndex={rIdx}
                           colIndex={1}
                           onChange={val => updateMonthOT(month, dateIso, 1, val)}
@@ -748,7 +808,7 @@ function App() {
                       </td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={ot[2]}
+                          value={Math.min(ot[2] || 0, 2)}
                           rowIndex={rIdx}
                           colIndex={2}
                           onChange={val => updateMonthOT(month, dateIso, 2, val)}
@@ -756,7 +816,9 @@ function App() {
                       </td>
                       <td className="bonus-cell">
                         {(() => {
-                          const rowBonus = Math.max((ot[0] || 0) - 2, 0) + Math.max((ot[1] || 0) - 2, 0) + Math.max((ot[2] || 0) - 2, 0);
+                          const rowBonus = (ot[3] || 0) > 0
+                            ? ot[3]
+                            : (Math.max((ot[0] || 0) - 2, 0) + Math.max((ot[1] || 0) - 2, 0) + Math.max((ot[2] || 0) - 2, 0));
                           return rowBonus > 0 ? Math.round(rowBonus * 100) / 100 : '';
                         })()}
                       </td>

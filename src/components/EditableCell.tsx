@@ -21,11 +21,20 @@ export const EditableCell = ({ value, onChange, rowIndex, colIndex }: EditableCe
   };
 
   const handleBlur = () => {
+    const numeric = parseFloat(localValue.replace(/,/g, '.'));
+    if (!isNaN(numeric) && numeric > 2) {
+      setLocalValue('2');
+    }
     onChange(localValue);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      const numeric = parseFloat(localValue.replace(/,/g, '.'));
+      if (!isNaN(numeric) && numeric > 2) {
+        setLocalValue('2');
+      }
+      onChange(localValue);
       const nextRow = rowIndex + 1;
       const nextInput = document.querySelector(`input[data-row="${nextRow}"][data-col="${colIndex}"]`) as HTMLInputElement;
       if (nextInput) {
