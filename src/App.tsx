@@ -666,22 +666,26 @@ function App() {
       h200 += res1.normal;
       h300 += res2.normal;
 
-      hBonus150 += res0.bonus;
-      hBonus200 += res1.bonus;
-      hBonus300 += res2.bonus;
+      let dayBonus150 = res0.bonus;
+      let dayBonus200 = res1.bonus;
+      let dayBonus300 = res2.bonus;
 
-      // Also account for stored ot[3] if inputs were already split
-      if (res0.bonus === 0 && res1.bonus === 0 && res2.bonus === 0 && (ot[3] || 0) > 0) {
+      const storedBonus = ot[3] || 0;
+      if (storedBonus > 0 && dayBonus150 === 0 && dayBonus200 === 0 && dayBonus300 === 0) {
         const isHol = isHoliday(d, defaultConfig.holidays);
         const isTetDay = isTet(d);
         if (wd === 'CN' || isHol || isTetDay || Boolean(isLunarHoliday(d)) || res2.normal > 0) {
-          hBonus300 += ot[3];
+          dayBonus300 = storedBonus;
         } else if (wd === 'T7' || res1.normal > 0) {
-          hBonus200 += ot[3];
+          dayBonus200 = storedBonus;
         } else {
-          hBonus150 += ot[3];
+          dayBonus150 = storedBonus;
         }
       }
+
+      hBonus150 += dayBonus150;
+      hBonus200 += dayBonus200;
+      hBonus300 += dayBonus300;
     });
 
     // Safe settings with defaults for old data
@@ -720,8 +724,8 @@ function App() {
     const s = calc(data.lcb, h150, h200, h300, mData.other, hBonus150, hBonus200, hBonus300, allowanceSum, bonusSum, month, data.dependents, customConfig);
     const totalDeductions = s.bhxh + s.bhyt + s.bhtn + s.cd + deductionSum + s.pit;
     const todayIso = getLocalDateStr(new Date());
-    // Removed per UI cleanup: no per-month summary needed here
-    // Cleaned up month summary variables
+    const totalNormalOtHours = Math.round((h150 + h200 + h300) * 100) / 100;
+    const totalBonusOtHours = Math.round((hBonus150 + hBonus200 + hBonus300) * 100) / 100;
 
     return (
       <div className="month-view">
@@ -759,6 +763,12 @@ function App() {
                   const isWe = d.getDay() === 0 || d.getDay() === 6;
                   const isToday = dateIso === todayIso;
 
+                  const rowRes0 = splitOvertime(ot[0] || 0, 0);
+                  const rowRes1 = splitOvertime(ot[1] || 0, 1);
+                  const rowRes2 = splitOvertime(ot[2] || 0, 2);
+                  const rowComputedBonus = Math.round((rowRes0.bonus + rowRes1.bonus + rowRes2.bonus) * 100) / 100;
+                  const rowDisplayBonus = rowComputedBonus > 0 ? rowComputedBonus : (ot[3] || 0);
+
                   let rowClass = "wk";
                   if (isToday) rowClass = "cur";
                   else if (isTetDay) rowClass = "tet";
@@ -772,7 +782,7 @@ function App() {
                       <td>{wd}</td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={ot[0] ? ot[0] : ''}
+                          value={rowRes0.normal > 0 ? rowRes0.normal : ''}
                           rowIndex={rIdx}
                           colIndex={0}
                           onChange={val => updateMonthOT(month, dateIso, 0, val)}
@@ -780,7 +790,7 @@ function App() {
                       </td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={ot[1] ? ot[1] : ''}
+                          value={rowRes1.normal > 0 ? rowRes1.normal : ''}
                           rowIndex={rIdx}
                           colIndex={1}
                           onChange={val => updateMonthOT(month, dateIso, 1, val)}
@@ -788,29 +798,24 @@ function App() {
                       </td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={ot[2] ? ot[2] : ''}
+                          value={rowRes2.normal > 0 ? rowRes2.normal : ''}
                           rowIndex={rIdx}
                           colIndex={2}
                           onChange={val => updateMonthOT(month, dateIso, 2, val)}
                         />
                       </td>
                       <td className="bonus-cell">
-                        {(() => {
-                          const rowBonus = (ot[3] || 0) > 0
-                            ? ot[3]
-                            : Math.round((splitOvertime(ot[0] || 0, 0).bonus + splitOvertime(ot[1] || 0, 1).bonus + splitOvertime(ot[2] || 0, 2).bonus) * 100) / 100;
-                          return rowBonus > 0 ? rowBonus : '';
-                        })()}
+                        {rowDisplayBonus > 0 ? rowDisplayBonus : ''}
                       </td>
                     </tr>
                   )
                 })}
                 <tr className="table-footer-row">
                   <td colSpan={2}>Giờ</td>
-                  <td>{h150}h</td>
-                  <td>{h200}h</td>
-                  <td>{h300}h</td>
-                  <td>{Math.round((hBonus150 + hBonus200 + hBonus300) * 100) / 100}h</td>
+                  <td>{Math.round(h150 * 100) / 100}h</td>
+                  <td>{Math.round(h200 * 100) / 100}h</td>
+                  <td>{Math.round(h300 * 100) / 100}h</td>
+                  <td>{totalBonusOtHours}h</td>
                 </tr>
               </tbody>
             </table>
@@ -828,8 +833,8 @@ function App() {
 
               <div className="breakdown-card additions">
                 <h3><Plus size={14} strokeWidth={2.5} /> TĂNG CA/THƯỞNG</h3>
-                <div className="bd-row"><span>Tiền OT:</span> <span>{fmt(s.ovt)} VNĐ</span></div>
-                {s.bonus_ot_pay > 0 && <div className="bd-row"><span>Bonus OT:</span> <span>{fmt(s.bonus_ot_pay)} VNĐ</span></div>}
+                <div className="bd-row"><span>Tiền OT{totalNormalOtHours > 0 ? ` (${totalNormalOtHours}h)` : ''}:</span> <span>{fmt(s.ovt)} VNĐ</span></div>
+                {s.bonus_ot_pay > 0 && <div className="bd-row"><span>Bonus OT{totalBonusOtHours > 0 ? ` (${totalBonusOtHours}h)` : ''}:</span> <span>{fmt(s.bonus_ot_pay)} VNĐ</span></div>}
                 {settingsBonuses.map((bn, idx) => {
                   const monthAmount = bonusAmounts[idx] ?? bn.amount;
                   return (
