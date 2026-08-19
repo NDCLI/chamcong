@@ -1,5 +1,5 @@
 export interface MonthOTData {
-  [dateIso: string]: number[]; // [150, 200, 300, late]
+  [dateIso: string]: number[]; // [150, 200, 300, bonus]
 }
 
 export interface MonthData {
@@ -341,10 +341,10 @@ export interface CalculationResult {
   cd: number;
   tong: number;
   ovt: number;
+  bonus_ot_pay: number;
   the: number;
   other: number;
   other_deduction: number;
-  late_deduction: number;
   allowances: number;
   bonuses: number;
   total_income: number;
@@ -359,7 +359,9 @@ export function calc(
   h200: number,
   h300: number,
   other: number,
-  hLate: number,
+  hBonus150: number,
+  hBonus200: number,
+  hBonus300: number,
   allowanceSum: number,
   bonusSum: number,
   mon: number,
@@ -372,13 +374,13 @@ export function calc(
   const bhtn = Math.floor(lcb * r.bhtn);
   const cd = r.cong_doan;
   const other_deduction = r.other_deduction || 0;
-  const late_deduction = Math.round((lcb / r.gio_chuan) * hLate);
-  const tong_bh = bhxh + bhyt + bhtn + cd + other_deduction + late_deduction;
+  const tong_bh = bhxh + bhyt + bhtn + cd + other_deduction;
 
   const ovt = Math.round((lcb / r.gio_chuan) * (h150 * 1.5 + h200 * 2 + h300 * 3));
+  const bonus_ot_pay = Math.round((lcb / r.gio_chuan) * (hBonus150 * 1.5 + hBonus200 * 2 + hBonus300 * 3));
   const the = [5, 6, 7, 8].includes(mon) ? lcb * r.thuong_he : 0;
   
-  const total = lcb + ovt + other + the + allowanceSum + bonusSum;
+  const total = lcb + ovt + bonus_ot_pay + other + the + allowanceSum + bonusSum;
   const ded = config.pit_deductions;
   
   const taxable = total - tong_bh - ded.personal - (dependents * ded.dependent);
@@ -391,9 +393,9 @@ export function calc(
     bhtn,
     cd,
     other_deduction,
-    late_deduction,
     tong: tong_bh,
     ovt,
+    bonus_ot_pay,
     the,
     other,
     allowances: allowanceSum,

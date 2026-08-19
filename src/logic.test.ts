@@ -69,7 +69,7 @@ describe('logic.ts', () => {
 
   describe('calc - Salary calculation', () => {
     it('calculates basic salary correctly', () => {
-      const result = calc(10000000, 1, 1, 0, 0, 0, 0, 0, 1, 0)
+      const result = calc(10000000, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0)
 
       expect(result.lcb).toBe(10000000)
       expect(result.ovt).toBeGreaterThan(0)
@@ -77,8 +77,8 @@ describe('logic.ts', () => {
     })
 
     it('handles dependents correctly', () => {
-      const noDependents = calc(15000000, 0, 0, 0, 0, 0, 0, 0, 1, 0)
-      const withDependents = calc(15000000, 0, 0, 0, 0, 0, 0, 0, 1, 2)
+      const noDependents = calc(15000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0)
+      const withDependents = calc(15000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2)
 
       // With dependents, taxable income is lower, so PIT should be lower
       expect(withDependents.taxable_income).toBeLessThan(noDependents.taxable_income)
@@ -87,32 +87,54 @@ describe('logic.ts', () => {
     })
 
     it('handles bonuses correctly', () => {
-      const result = calc(10000000, 0, 0, 0, 0, 0, 0, 1000000, 1, 0)
+      const result = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 0, 1000000, 1, 0)
       expect(result.bonuses).toBe(1000000)
       // Total income includes bonus, but net may be less after taxes
       expect(result.total_income).toBe(11000000)
     })
 
     it('handles allowances correctly', () => {
-      const result = calc(10000000, 0, 0, 0, 0, 0, 1200000, 0, 1, 0)
+      const result = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 1200000, 0, 1, 0)
 
       expect(result.allowances).toBe(1200000)
       expect(result.net).toBeGreaterThan(10000000)
     })
 
     it('handles zero salary', () => {
-      const result = calc(0, 0, 0, 0, 0, 0, 0, 0, 1, 0)
+      const result = calc(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0)
       expect(result.lcb).toBe(0)
       // With zero salary, net is negative because of fixed costs (công đoàn)
       expect(result.net).toBeLessThan(0)
     })
 
     it('handles summer bonus months', () => {
-      const summer = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 6, 0)
-      const regular = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 1, 0)
+      const summer = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0)
+      const regular = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0)
 
       expect(summer.the).toBeGreaterThan(0)
       expect(regular.the).toBe(0)
+    })
+
+    it('calculates bonus OT pay correctly', () => {
+      // 0.5h bonus at 150% rate
+      const result = calc(10000000, 2, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0)
+      const hourlyRate = 10000000 / 208
+      const expectedBonusOT = Math.round(hourlyRate * (0.5 * 1.5))
+
+      expect(result.bonus_ot_pay).toBe(expectedBonusOT)
+      // Bonus OT is added to total income
+      expect(result.total_income).toBe(result.lcb + result.ovt + result.bonus_ot_pay + result.other + result.the + result.allowances + result.bonuses)
+    })
+
+    it('calculates bonus OT at different rates', () => {
+      const hourlyRate = 10000000 / 208
+      // Bonus at 200% (Saturday)
+      const sat = calc(10000000, 0, 4, 0, 0, 0, 4.67, 0, 0, 0, 1, 0)
+      expect(sat.bonus_ot_pay).toBe(Math.round(hourlyRate * (4.67 * 2)))
+
+      // Bonus at 300% (Sunday/Holiday)
+      const sun = calc(10000000, 0, 0, 8.67, 0, 0, 0, 0.5, 0, 0, 1, 0)
+      expect(sun.bonus_ot_pay).toBe(Math.round(hourlyRate * (0.5 * 3)))
     })
   })
 
