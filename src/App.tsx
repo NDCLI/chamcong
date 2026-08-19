@@ -99,7 +99,7 @@ function App() {
     return initData;
   };
 
-  // Migration: migrate old data and split OT according to rules
+  // Migration: ensure index 3 has the correct bonus calculated from raw OT values
   const migrateOldLateData = (appData: AppData): AppData => {
     const migrated = { ...appData, months: { ...appData.months } };
     for (const monthKey of Object.keys(migrated.months)) {
@@ -109,16 +109,15 @@ function App() {
         for (const dateKey of Object.keys(newOt)) {
           const arr = newOt[dateKey];
           if (arr && arr.length >= 3) {
-            const res0 = splitOvertime(arr[0] || 0, 0);
-            const res1 = splitOvertime(arr[1] || 0, 1);
-            const res2 = splitOvertime(arr[2] || 0, 2);
+            const raw0 = arr[0] || 0;
+            const raw1 = arr[1] || 0;
+            const raw2 = arr[2] || 0;
+            const res0 = splitOvertime(raw0, 0);
+            const res1 = splitOvertime(raw1, 1);
+            const res2 = splitOvertime(raw2, 2);
             const totalBonus = Math.round((res0.bonus + res1.bonus + res2.bonus) * 100) / 100;
 
-            if (totalBonus > 0 || res0.normal !== (arr[0] || 0) || res1.normal !== (arr[1] || 0) || res2.normal !== (arr[2] || 0)) {
-              newOt[dateKey] = [res0.normal, res1.normal, res2.normal, totalBonus];
-            } else if (arr.length >= 4 && arr[3] !== 0) {
-              newOt[dateKey] = [res0.normal, res1.normal, res2.normal, 0];
-            }
+            newOt[dateKey] = [raw0, raw1, raw2, totalBonus];
           }
         }
         migrated.months[monthKey] = { ...monthData, ot: newOt };
@@ -394,21 +393,14 @@ function App() {
       const newOT = [...currentOT];
       const numericVal = pf(value);
 
-      const split = splitOvertime(numericVal, otIndex);
-      newOT[otIndex] = split.normal;
+      // Store raw input in state so raw user input is never lost
+      newOT[otIndex] = numericVal;
 
-      // Calculate total bonus for this row across all columns
-      let totalRowBonus = 0;
-      for (let i = 0; i < 3; i++) {
-        if (i === otIndex) {
-          totalRowBonus += split.bonus;
-        } else {
-          const colVal = newOT[i] || 0;
-          const colSplit = splitOvertime(colVal, i);
-          totalRowBonus += colSplit.bonus;
-        }
-      }
-      newOT[3] = Math.round(totalRowBonus * 100) / 100;
+      // Calculate total bonus dynamically for this row across all columns
+      const res0 = splitOvertime(newOT[0] || 0, 0);
+      const res1 = splitOvertime(newOT[1] || 0, 1);
+      const res2 = splitOvertime(newOT[2] || 0, 2);
+      newOT[3] = Math.round((res0.bonus + res1.bonus + res2.bonus) * 100) / 100;
 
       return {
         ...prev,
@@ -656,7 +648,6 @@ function App() {
     dates.forEach(d => {
       const dateIso = getLocalDateStr(d);
       const ot = mData.ot[dateIso] || [0, 0, 0, 0];
-      const wd = WEEKDAYS[d.getDay()];
 
       const res0 = splitOvertime(ot[0] || 0, 0);
       const res1 = splitOvertime(ot[1] || 0, 1);
@@ -666,26 +657,9 @@ function App() {
       h200 += res1.normal;
       h300 += res2.normal;
 
-      let dayBonus150 = res0.bonus;
-      let dayBonus200 = res1.bonus;
-      let dayBonus300 = res2.bonus;
-
-      const storedBonus = ot[3] || 0;
-      if (storedBonus > 0 && dayBonus150 === 0 && dayBonus200 === 0 && dayBonus300 === 0) {
-        const isHol = isHoliday(d, defaultConfig.holidays);
-        const isTetDay = isTet(d);
-        if (wd === 'CN' || isHol || isTetDay || Boolean(isLunarHoliday(d)) || res2.normal > 0) {
-          dayBonus300 = storedBonus;
-        } else if (wd === 'T7' || res1.normal > 0) {
-          dayBonus200 = storedBonus;
-        } else {
-          dayBonus150 = storedBonus;
-        }
-      }
-
-      hBonus150 += dayBonus150;
-      hBonus200 += dayBonus200;
-      hBonus300 += dayBonus300;
+      hBonus150 += res0.bonus;
+      hBonus200 += res1.bonus;
+      hBonus300 += res2.bonus;
     });
 
     // Safe settings with defaults for old data
@@ -766,8 +740,7 @@ function App() {
                   const rowRes0 = splitOvertime(ot[0] || 0, 0);
                   const rowRes1 = splitOvertime(ot[1] || 0, 1);
                   const rowRes2 = splitOvertime(ot[2] || 0, 2);
-                  const rowComputedBonus = Math.round((rowRes0.bonus + rowRes1.bonus + rowRes2.bonus) * 100) / 100;
-                  const rowDisplayBonus = rowComputedBonus > 0 ? rowComputedBonus : (ot[3] || 0);
+                  const rowBonus = Math.round((rowRes0.bonus + rowRes1.bonus + rowRes2.bonus) * 100) / 100;
 
                   let rowClass = "wk";
                   if (isToday) rowClass = "cur";
@@ -782,30 +755,36 @@ function App() {
                       <td>{wd}</td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={rowRes0.normal > 0 ? rowRes0.normal : ''}
+                          value={ot[0] || ''}
+                          displayValue={rowRes0.normal > 0 ? rowRes0.normal : ''}
                           rowIndex={rIdx}
                           colIndex={0}
                           onChange={val => updateMonthOT(month, dateIso, 0, val)}
+                          title={ot[0] && rowRes0.bonus > 0 ? `Nhập: ${ot[0]}h → Tính: ${rowRes0.normal}h (Bonus: ${rowRes0.bonus}h)` : undefined}
                         />
                       </td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={rowRes1.normal > 0 ? rowRes1.normal : ''}
+                          value={ot[1] || ''}
+                          displayValue={rowRes1.normal > 0 ? rowRes1.normal : ''}
                           rowIndex={rIdx}
                           colIndex={1}
                           onChange={val => updateMonthOT(month, dateIso, 1, val)}
+                          title={ot[1] && rowRes1.bonus > 0 ? `Nhập: ${ot[1]}h → Tính: ${rowRes1.normal}h (Bonus: ${rowRes1.bonus}h)` : undefined}
                         />
                       </td>
                       <td className="editable-cell">
                         <EditableCell
-                          value={rowRes2.normal > 0 ? rowRes2.normal : ''}
+                          value={ot[2] || ''}
+                          displayValue={rowRes2.normal > 0 ? rowRes2.normal : ''}
                           rowIndex={rIdx}
                           colIndex={2}
                           onChange={val => updateMonthOT(month, dateIso, 2, val)}
+                          title={ot[2] && rowRes2.bonus > 0 ? `Nhập: ${ot[2]}h → Tính: ${rowRes2.normal}h (Bonus: ${rowRes2.bonus}h)` : undefined}
                         />
                       </td>
                       <td className="bonus-cell">
-                        {rowDisplayBonus > 0 ? rowDisplayBonus : ''}
+                        {rowBonus > 0 ? rowBonus : ''}
                       </td>
                     </tr>
                   )

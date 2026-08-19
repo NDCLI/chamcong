@@ -1,42 +1,37 @@
 import { useState, useEffect } from 'react';
-import { splitOvertime } from '../logic';
 
 interface EditableCellProps {
   value: number | string;
+  displayValue?: number | string;
   onChange: (val: string) => void;
   rowIndex: number;
   colIndex: number;
+  title?: string;
 }
 
-export const EditableCell = ({ value, onChange, rowIndex, colIndex }: EditableCellProps) => {
+export const EditableCell = ({ value, displayValue, onChange, rowIndex, colIndex, title }: EditableCellProps) => {
+  const [isFocused, setIsFocused] = useState(false);
   const [localValue, setLocalValue] = useState<string>(value ? String(value) : '');
 
   useEffect(() => {
-    // Sync local state with prop changes from parent
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalValue(value ? String(value) : '');
-  }, [value]);
+    // When not actively editing, sync with raw value
+    if (!isFocused) {
+      setLocalValue(value ? String(value) : '');
+    }
+  }, [value, isFocused]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalValue(e.target.value);
   };
 
   const handleBlur = () => {
-    const numeric = parseFloat(localValue.replace(/,/g, '.'));
-    if (!isNaN(numeric) && numeric > 0 && colIndex < 3) {
-      const { normal } = splitOvertime(numeric, colIndex);
-      setLocalValue(normal > 0 ? String(normal) : '');
-    }
+    setIsFocused(false);
     onChange(localValue);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      const numeric = parseFloat(localValue.replace(/,/g, '.'));
-      if (!isNaN(numeric) && numeric > 0 && colIndex < 3) {
-        const { normal } = splitOvertime(numeric, colIndex);
-        setLocalValue(normal > 0 ? String(normal) : '');
-      }
+      setIsFocused(false);
       onChange(localValue);
       const nextRow = rowIndex + 1;
       const nextInput = document.querySelector(`input[data-row="${nextRow}"][data-col="${colIndex}"]`) as HTMLInputElement;
@@ -48,19 +43,27 @@ export const EditableCell = ({ value, onChange, rowIndex, colIndex }: EditableCe
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setIsFocused(true);
+    setLocalValue(value ? String(value) : '');
     e.target.select();
   };
+
+  // When focused: show raw user input. When blurred: show displayValue (normal hours) if provided
+  const shownValue = isFocused
+    ? localValue
+    : (displayValue !== undefined ? (displayValue ? String(displayValue) : '') : localValue);
 
   return (
     <input
       type="text"
-      value={localValue}
+      value={shownValue}
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       onFocus={handleFocus}
       data-row={rowIndex}
       data-col={colIndex}
+      title={title}
     />
   );
 };
