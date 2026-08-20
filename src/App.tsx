@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 import './App.css'
-import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday, splitOvertime } from './logic'
+import { calc, fmt, pf, datesOfMonth, defaultConfig, getPayrollPeriod, isHoliday, isTet, isLunarHoliday, shiftPayrollPeriod, splitOvertime } from './logic'
 import type { AppData, AppSettings, Allowance, SyncStatus } from './types'
 import { DEFAULT_SETTINGS, WEEKDAYS } from './constants'
 import { storageDataKey, storageSyncKey, getLocalDateStr } from './storage'
@@ -33,22 +33,14 @@ import {
 } from 'lucide-react'
 
 const isSundayIso = (dateIso: string) => new Date(`${dateIso}T00:00:00`).getDay() === 0;
+const formatPeriodDate = (date: Date) => date.toLocaleDateString('vi-VN', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric'
+});
 
 function App() {
-  const getInitialMonth = () => {
-    const today = new Date();
-    const todayDate = today.getDate();
-    const todayMonth = today.getMonth() + 1;
-    
-    // Bảng tính từ 25 tháng này đến 24 tháng sau
-    // Nên nếu ngày >= 25 thì nó ở tháng sau
-    if (todayDate >= 25) {
-      return todayMonth === 12 ? 1 : todayMonth + 1;
-    }
-    return todayMonth;
-  };
-  
-  const [activeTab, setActiveTab] = useState<number>(getInitialMonth());
+  const [activeTab, setActiveTab] = useState<number>(() => getPayrollPeriod().month);
   const [showMonthDropdown, setShowMonthDropdown] = useState<boolean>(false);
   const monthNavRef = useRef<HTMLDivElement>(null);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -87,7 +79,7 @@ function App() {
   const createDefaultData = (): AppData => {
     const initData: AppData = {
       profile_name: "Mặc định",
-      year: new Date().getFullYear(),
+      year: getPayrollPeriod().year,
       lcb: 0,
       dependents: 0,
       months: {},
@@ -179,13 +171,14 @@ function App() {
       if (e.key === 'Escape') {
         if (showSyncModal) setShowSyncModal(false);
         if (showSettingsModal) setShowSettingsModal(false);
+        if (showMonthDropdown) setShowMonthDropdown(false);
         if (showAccountMenu) setShowAccountMenu(false);
         if (showPasswordForm) setShowPasswordForm(false);
       }
     };
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
-  }, [showSyncModal, showSettingsModal, showAccountMenu, showPasswordForm]);
+  }, [showSyncModal, showSettingsModal, showMonthDropdown, showAccountMenu, showPasswordForm]);
 
   useEffect(() => {
     const forceBlur = () => {
@@ -370,6 +363,30 @@ function App() {
     if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => ({ ...prev, ...updates, lastUpdated: Date.now() }));
   };
+
+  const movePayrollPeriod = (offset: number) => {
+    const next = shiftPayrollPeriod(data.year, activeTab, offset);
+    setActiveTab(next.month);
+    if (next.year !== data.year) updateData({ year: next.year });
+    setShowMonthDropdown(false);
+  };
+
+  const goToCurrentPayrollPeriod = () => {
+    const current = getPayrollPeriod();
+    setActiveTab(current.month);
+    if (current.year !== data.year) updateData({ year: current.year });
+    setShowMonthDropdown(false);
+  };
+
+  const yearOptions = Array.from(new Set([
+    ...Array.from({ length: 11 }, (_, index) => new Date().getFullYear() - 5 + index),
+    data.year
+  ])).sort((a, b) => a - b);
+
+  const currentPayrollPeriod = getPayrollPeriod();
+  const isViewingCurrentPeriod = currentPayrollPeriod.month === activeTab && currentPayrollPeriod.year === data.year;
+  const selectedPeriodDates = datesOfMonth(data.year, activeTab);
+  const selectedPeriodRange = `${formatPeriodDate(selectedPeriodDates[0])} – ${formatPeriodDate(selectedPeriodDates[selectedPeriodDates.length - 1])}`;
 
   const updateSettings = (updates: Partial<AppSettings>) => {
     isUserInputRef.current = true;
@@ -704,6 +721,33 @@ function App() {
 
     return (
       <div className="month-view">
+        <section className="period-overview" aria-label={`Tóm tắt kỳ lương tháng ${month} năm ${data.year}`}>
+          <div className="period-overview-main">
+            <span className="period-overview-icon" aria-hidden="true"><CalendarDays size={19} /></span>
+            <div className="period-overview-copy">
+              <span className="period-overview-kicker">KỲ LƯƠNG</span>
+              <div className="period-overview-title-row">
+                <strong>Tháng {String(month).padStart(2, '0')} / {data.year}</strong>
+                {isViewingCurrentPeriod && <span className="current-period-badge">Hiện tại</span>}
+              </div>
+              <span className="period-overview-range">{formatPeriodDate(dates[0])} – {formatPeriodDate(dates[dates.length - 1])}</span>
+            </div>
+          </div>
+          <div className="period-overview-stats">
+            <div className="period-overview-stat">
+              <span>OT thường</span>
+              <strong>{totalNormalOtHours}h</strong>
+            </div>
+            <div className="period-overview-stat bonus">
+              <span>Bonus OT</span>
+              <strong>{totalBonusOtHours}h</strong>
+            </div>
+            <div className="period-overview-stat salary">
+              <span>Thực nhận</span>
+              <strong>{fmt(s.net)} ₫</strong>
+            </div>
+          </div>
+        </section>
         <div className="month-content">
           <div className="month-table-container">
             <table className="data-table">
@@ -1081,25 +1125,74 @@ function App() {
       <header className="header">
         <div className="header-left">
           <div className="header-top">
-            <h1 className="header-title"><TrendingUp size={20} /> Bảng chấm công</h1>
+            <h1 className="header-title">
+              <span className="header-title-icon" aria-hidden="true"><TrendingUp size={17} /></span>
+              <span>Bảng chấm công</span>
+            </h1>
             <div className="header-month-nav" ref={monthNavRef}>
-              <button className="month-nav prev" onClick={() => { setActiveTab(activeTab === 1 ? 12 : activeTab - 1); setShowMonthDropdown(false); }} aria-label="Previous month">
+              <button className="month-nav prev" onClick={() => movePayrollPeriod(-1)} aria-label="Kỳ lương trước" title="Kỳ lương trước">
                 <ChevronLeft size={16} strokeWidth={2.5} />
               </button>
               <button 
                 className={`month-pill ${showMonthDropdown ? 'active' : ''}`}
-                onClick={() => setShowMonthDropdown(!showMonthDropdown)}
-                aria-label="Select month"
+                onClick={() => {
+                  setShowMonthDropdown(!showMonthDropdown);
+                  setShowAccountMenu(false);
+                }}
+                aria-label={`Chọn kỳ lương, hiện tại là tháng ${activeTab} năm ${data.year}`}
+                aria-haspopup="dialog"
+                aria-expanded={showMonthDropdown}
+                aria-controls="payroll-period-picker"
               >
-                Tháng {activeTab}
-                <ChevronDown size={12} strokeWidth={3} style={{ marginLeft: '4px', transition: 'transform 0.2s ease', transform: showMonthDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                <span className="month-pill-month">Tháng {String(activeTab).padStart(2, '0')}</span>
+                <span className="month-pill-divider" aria-hidden="true" />
+                <span className="month-pill-year">{data.year}</span>
+                <ChevronDown className="month-pill-chevron" size={13} strokeWidth={3} aria-hidden="true" />
               </button>
-              <button className="month-nav next" onClick={() => { setActiveTab(activeTab === 12 ? 1 : activeTab + 1); setShowMonthDropdown(false); }} aria-label="Next month">
+              <button className="month-nav next" onClick={() => movePayrollPeriod(1)} aria-label="Kỳ lương tiếp theo" title="Kỳ lương tiếp theo">
                 <ChevronRight size={16} strokeWidth={2.5} />
               </button>
 
               {showMonthDropdown && (
-                <div className="month-dropdown-menu">
+                <div className="month-dropdown-menu" id="payroll-period-picker" role="dialog" aria-label="Chọn tháng và năm">
+                  <div className="period-dropdown-heading">
+                    <div>
+                      <strong>Chọn kỳ lương</strong>
+                      <span>Kỳ công từ ngày 25 đến ngày 24</span>
+                    </div>
+                    {!isViewingCurrentPeriod && (
+                      <button className="current-period-button" onClick={goToCurrentPayrollPeriod}>Hiện tại</button>
+                    )}
+                  </div>
+
+                  <div className="year-picker" aria-label="Chọn năm">
+                    <button
+                      className="year-nav-button"
+                      onClick={() => updateData({ year: data.year - 1 })}
+                      aria-label={`Chọn năm ${data.year - 1}`}
+                    >
+                      <ChevronLeft size={17} />
+                    </button>
+                    <label className="year-select-wrap">
+                      <span>Năm</span>
+                      <select
+                        value={data.year}
+                        onChange={(event) => updateData({ year: Number(event.target.value) })}
+                        aria-label="Năm của kỳ lương"
+                      >
+                        {yearOptions.map(year => <option key={year} value={year}>{year}</option>)}
+                      </select>
+                    </label>
+                    <button
+                      className="year-nav-button"
+                      onClick={() => updateData({ year: data.year + 1 })}
+                      aria-label={`Chọn năm ${data.year + 1}`}
+                    >
+                      <ChevronRight size={17} />
+                    </button>
+                  </div>
+
+                  <div className="period-picker-label">Chọn tháng</div>
                   <div className="month-dropdown-grid">
                     {Array.from({ length: 12 }, (_, i) => {
                       const m = i + 1;
@@ -1111,11 +1204,17 @@ function App() {
                             setActiveTab(m);
                             setShowMonthDropdown(false);
                           }}
+                          aria-current={activeTab === m ? 'date' : undefined}
                         >
-                          Tháng {m}
+                          <span>T{String(m).padStart(2, '0')}</span>
+                          <small>Tháng {m}</small>
                         </button>
                       );
                     })}
+                  </div>
+                  <div className="period-dropdown-footer">
+                    <CalendarDays size={14} aria-hidden="true" />
+                    <span>{selectedPeriodRange}</span>
                   </div>
                 </div>
               )}
@@ -1131,19 +1230,6 @@ function App() {
           </div>
           <Clock />
           <div className="header-data-group">
-            <div className="input-group">
-              <label>Năm:</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={data.year}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  updateData({ year: isNaN(val) ? new Date().getFullYear() : val });
-                }}
-                style={{ width: '75px', textAlign: 'center' }}
-              />
-            </div>
             <div className="input-group">
               <label>NPT:</label>
               <input
@@ -1164,7 +1250,10 @@ function App() {
           <div className="account-fab-wrapper account-in-header" ref={accountMenuRef}>
             <button
               className="account-fab"
-              onClick={() => setShowAccountMenu(!showAccountMenu)}
+              onClick={() => {
+                setShowAccountMenu(!showAccountMenu);
+                setShowMonthDropdown(false);
+              }}
               title={user?.email || guestName || 'Tài khoản'}
             >
               <UserIcon size={14} />
@@ -1506,7 +1595,7 @@ function App() {
                   updateSettings({ bonuses: newBns });
                 }}>+ Thêm thưởng cố định</button>
 
-                <h3 className="settings-section-title"><CalendarDays size={14} /> Thưởng tháng {activeTab}</h3>
+                <h3 className="settings-section-title"><CalendarDays size={14} /> Thưởng tháng {activeTab}/{data.year}</h3>
                 <div className="settings-list">
                   {(data.months[activeTab]?.bonuses || []).map((bn, idx) => (
                     <div key={idx} className="settings-item-row">
@@ -1529,7 +1618,7 @@ function App() {
                   ))}
                 </div>
                 <button className="btn btn-primary btn-add" onClick={() => addMonthBonus(activeTab)}>
-                  + Thêm thưởng tháng {activeTab}
+                  + Thêm thưởng tháng {activeTab}/{data.year}
                 </button>
               </div>
             </div>

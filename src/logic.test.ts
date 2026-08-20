@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calc, fmt, pf, datesOfMonth, defaultConfig, isHoliday, isTet, isLunarHoliday, splitOvertime } from './logic'
+import { calc, fmt, pf, datesOfMonth, defaultConfig, getPayrollPeriod, isHoliday, isTet, isLunarHoliday, shiftPayrollPeriod, splitOvertime } from './logic'
 
 describe('logic.ts', () => {
   describe('fmt - Format currency', () => {
@@ -54,6 +54,23 @@ describe('logic.ts', () => {
       const dates = datesOfMonth(2026, 12)
       expect(dates[0].getDate()).toBe(25) // 25 Nov
       expect(dates[dates.length - 1].getDate()).toBe(24) // 24 Dec
+    })
+  })
+
+  describe('payroll period navigation', () => {
+    it('moves to the next payroll month from day 25', () => {
+      expect(getPayrollPeriod(new Date(2026, 7, 24))).toEqual({ month: 8, year: 2026 })
+      expect(getPayrollPeriod(new Date(2026, 7, 25))).toEqual({ month: 9, year: 2026 })
+    })
+
+    it('rolls December into January of the next year', () => {
+      expect(getPayrollPeriod(new Date(2026, 11, 25))).toEqual({ month: 1, year: 2027 })
+      expect(shiftPayrollPeriod(2026, 12, 1)).toEqual({ month: 1, year: 2027 })
+    })
+
+    it('rolls January back into December of the previous year', () => {
+      expect(shiftPayrollPeriod(2026, 1, -1)).toEqual({ month: 12, year: 2025 })
+      expect(shiftPayrollPeriod(2026, 6, 8)).toEqual({ month: 2, year: 2027 })
     })
   })
 

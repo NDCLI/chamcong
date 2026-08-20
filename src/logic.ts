@@ -353,6 +353,32 @@ export interface CalculationResult {
   net: number;
 }
 
+export interface PayrollPeriod {
+  month: number;
+  year: number;
+}
+
+/**
+ * Kỳ chấm công chạy từ ngày 25 tháng trước đến ngày 24 của tháng hiển thị.
+ * Vì vậy từ ngày 25 trở đi, người dùng mặc định xem kỳ của tháng kế tiếp.
+ */
+export function getPayrollPeriod(date: Date = new Date()): PayrollPeriod {
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+
+  if (date.getDate() < 25) return { month, year };
+  if (month === 12) return { month: 1, year: year + 1 };
+  return { month: month + 1, year };
+}
+
+/** Di chuyển kỳ lương, đồng thời cuộn năm đúng khi qua tháng 1/12. */
+export function shiftPayrollPeriod(year: number, month: number, offset: number): PayrollPeriod {
+  const absoluteMonth = year * 12 + (month - 1) + offset;
+  const nextYear = Math.floor(absoluteMonth / 12);
+  const nextMonth = ((absoluteMonth % 12) + 12) % 12;
+  return { month: nextMonth + 1, year: nextYear };
+}
+
 export function calc(
   lcb: number,
   h150: number,
