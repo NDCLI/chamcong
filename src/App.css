@@ -348,6 +348,7 @@ body::before {
 .period-overview-stat span { color: var(--text-muted); font-size: .58rem; font-weight: 700; }
 .period-overview-stat strong { color: #c4b5fd; font-size: .76rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .period-overview-stat.bonus strong { color: #fbbf24; }
+.period-overview-stat.bonus small { color: #fde68a; font-size: .52rem; font-weight: 700; white-space: nowrap; }
 .period-overview-stat.salary { min-width: 130px; background: rgba(74,222,128,.08); border-color: rgba(74,222,128,.18); }
 .period-overview-stat.salary strong { color: #86efac; }
 

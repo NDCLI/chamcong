@@ -741,6 +741,7 @@ function App() {
             <div className="period-overview-stat bonus">
               <span>Bonus OT</span>
               <strong>{totalBonusOtHours}h</strong>
+              <small>150%: {Math.round(hBonus150 * 100) / 100}h · 200%: {Math.round(hBonus200 * 100) / 100}h · 300%: {Math.round(hBonus300 * 100) / 100}h</small>
             </div>
             <div className="period-overview-stat salary">
               <span>Thực nhận</span>
@@ -913,12 +914,7 @@ function App() {
               </div>
             </div>
 
-            <div className="net-salary">
-              <span>THỰC NHẬN:</span>
-              <span>{fmt(s.net)} VNĐ</span>
-            </div>
-
-            {/* Decorative animated background below the net salary */}
+            {/* Decorative animated background below the breakdown */}
             <div className="ambient-card" aria-hidden="true">
               <div className="ambient-orb ambient-orb-1" />
               <div className="ambient-orb ambient-orb-2" />
