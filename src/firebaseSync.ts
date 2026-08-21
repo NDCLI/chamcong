@@ -133,6 +133,14 @@ export const syncFromCloud = async (syncCode: string) => {
   throw new Error('Không tìm thấy dữ liệu với Mã đồng bộ này!');
 };
 
+/** Public, read-only app configuration. Validation happens in holidayCalendar.ts. */
+export const getPublicHolidayCalendar = async (): Promise<unknown | null> => {
+  const dbInstance = await getDbInstance();
+  const { doc, getDoc } = await import('firebase/firestore');
+  const docSnap = await getDoc(doc(dbInstance, 'app_config', 'public_holidays'));
+  return docSnap.exists() ? docSnap.data() : null;
+};
+
 export const syncAccountToCloud = async (uid: string, data: unknown): Promise<boolean> => {
   if (!uid) throw new Error('UID không hợp lệ.');
   const dbInstance = await getDbInstance();

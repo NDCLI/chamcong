@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 import './App.css'
-import { calc, fmt, pf, datesOfMonth, defaultConfig, getPayrollPeriod, isHoliday, isTet, isLunarHoliday, shiftPayrollPeriod, splitOvertime } from './logic'
+import { calc, fmt, pf, datesOfMonth, defaultConfig, getPayrollPeriod, isTet, isLunarHoliday, shiftPayrollPeriod, splitOvertime } from './logic'
 import type { AppData, AppSettings, Allowance, SyncStatus } from './types'
 import { DEFAULT_SETTINGS, WEEKDAYS } from './constants'
 import { storageDataKey, storageSyncKey, getLocalDateStr } from './storage'
+import { cacheHolidayCalendar, getCachedHolidayCalendar, isPublicHoliday, isPublicHolidayCalendar } from './holidayCalendar'
 import { isStoredAppData, hasMeaningfulData, hashGuestCode, isValidPassphrase } from './helpers'
 import { EditableCell } from './components/EditableCell'
 import { EditableCurrency } from './components/EditableCurrency'
@@ -13,6 +14,7 @@ import { SyncLoaderIcon } from './components/SyncLoaderIcon'
 import {
   syncToCloud,
   syncFromCloud,
+  getPublicHolidayCalendar,
   syncAccountToCloud,
   syncAccountFromCloud,
   watchAuthState,
@@ -46,6 +48,26 @@ function App() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const [holidayCalendar, setHolidayCalendar] = useState(getCachedHolidayCalendar);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    const refreshPublicHolidayCalendar = async () => {
+      try {
+        const cloudCalendar = await getPublicHolidayCalendar();
+        if (!isCurrent || !isPublicHolidayCalendar(cloudCalendar)) return;
+
+        cacheHolidayCalendar(cloudCalendar);
+        setHolidayCalendar(cloudCalendar);
+      } catch {
+        // Keep the cached or built-in calendar when offline or before Firebase Rules are configured.
+      }
+    };
+
+    void refreshPublicHolidayCalendar();
+    return () => { isCurrent = false; };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -730,7 +752,6 @@ function App() {
                 <strong>Tháng {String(month).padStart(2, '0')} / {data.year}</strong>
                 {isViewingCurrentPeriod && <span className="current-period-badge">Hiện tại</span>}
               </div>
-              <span className="period-overview-range">{formatPeriodDate(dates[0])} – {formatPeriodDate(dates[dates.length - 1])}</span>
             </div>
           </div>
           <div className="period-overview-stats">
@@ -783,7 +804,7 @@ function App() {
                   const wd = WEEKDAYS[d.getDay()];
                   const ot = mData.ot[dateIso] || [0, 0, 0, 0];
 
-                  const isHol = isHoliday(d, defaultConfig.holidays);
+                  const isHol = isPublicHoliday(d, holidayCalendar);
                   const isTetDay = isTet(d);
                   const lunarHolName = isLunarHoliday(d);
                   const isWe = d.getDay() === 0 || d.getDay() === 6;
@@ -1123,7 +1144,7 @@ function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-container payroll-app">
       <header className="header">
         <div className="header-left">
           <div className="header-top">
