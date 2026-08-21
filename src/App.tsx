@@ -741,7 +741,13 @@ function App() {
             <div className="period-overview-stat bonus">
               <span>Bonus OT</span>
               <strong>{totalBonusOtHours}h</strong>
-              <small>150%: {Math.round(hBonus150 * 100) / 100}h · 200%: {Math.round(hBonus200 * 100) / 100}h · 300%: {Math.round(hBonus300 * 100) / 100}h</small>
+              {(() => {
+                const parts: string[] = [];
+                if (hBonus150 > 0) parts.push(`150%: ${Math.round(hBonus150 * 100) / 100}h`);
+                if (hBonus200 > 0) parts.push(`200%: ${Math.round(hBonus200 * 100) / 100}h`);
+                if (hBonus300 > 0) parts.push(`300%: ${Math.round(hBonus300 * 100) / 100}h`);
+                return parts.length > 0 ? <small>{parts.join(' · ')}</small> : null;
+              })()}
             </div>
             <div className="period-overview-stat salary">
               <span>Thực nhận</span>
