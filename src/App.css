@@ -2352,3 +2352,400 @@ a:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================================================
+   COMPACT / NO-SCROLL LAYER
+   Goal: the whole app fits one viewport at every size, phone included.
+   Nothing scrolls; the timesheet and the payroll breakdown become two panes
+   of a segmented control on small screens instead of one long column.
+   ========================================================================== */
+
+/* ---- 1. Hard scroll lock ------------------------------------------------ */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100svh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.payroll-app {
+  height: 100svh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Popovers and modals keep their own scroll — they are transient overlays,
+   not part of the resting layout. */
+.month-dropdown-menu,
+.account-menu,
+.modal-content {
+  overscroll-behavior: contain;
+}
+
+/* ---- 2. Tighter type scale --------------------------------------------- */
+:root {
+  --fs-3xs: 9px;
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 15px;
+  --fs-xl: 18px;
+  --fs-2xl: 22px;
+  /* "Thực nhận" comes down from clamp(30px,3.2vw,44px) */
+  --fs-hero: clamp(20px, 2vw, 27px);
+}
+
+body { font-size: var(--fs-sm); }
+
+/* ---- 3. Column rules --------------------------------------------------- */
+/* Every column is separated by a visible rule, not just day/weekday. */
+.data-table th,
+.data-table td {
+  border-right: 1px solid var(--rule-strong);
+}
+
+.data-table th:last-child,
+.data-table td:last-child {
+  border-right: 0;
+}
+
+/* ---- 4. Columns sized to their own heading ----------------------------- */
+/* "NGÀY" / "THỨ" only ever hold 2 characters, so they stop eating width and
+   the OT columns — the ones that take input — share what is left. */
+.ledger-panel {
+  --col-day: 34px;
+  --col-weekday: 34px;
+  --col-ot: calc((100% - 68px) / 4);
+}
+
+.data-table {
+  min-width: 0;
+}
+
+/* ---- 5. Rows sized to fit, never to scroll ----------------------------- */
+/* 33 rows = 31 period days + heading + totals. --chrome is everything above
+   the table; the row height falls out of whatever height remains. */
+.ledger-panel {
+  --chrome: 200px;
+  --row-h: clamp(16px, calc((100svh - var(--chrome)) / 33), 30px);
+  overflow: hidden;
+}
+
+.data-table th {
+  height: calc(var(--row-h) + 4px);
+  padding: 2px 4px;
+  font-size: var(--fs-3xs);
+  letter-spacing: 0.03em;
+}
+
+.data-table td {
+  height: var(--row-h);
+  padding: 0 4px;
+  font-size: var(--fs-xs);
+}
+
+.editable-cell input {
+  height: calc(var(--row-h) - 2px);
+  padding: 0 2px;
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+.bonus-cell { font-size: var(--fs-xs); }
+
+.table-footer-row td {
+  height: calc(var(--row-h) + 2px);
+  font-size: var(--fs-xs);
+}
+
+/* ---- 6. Leaner shell so the table gets the space ----------------------- */
+.app-container { padding: 6px 10px 8px; }
+
+.summary-hero { border-radius: var(--r-md); }
+
+.summary-net strong { letter-spacing: -0.02em; }
+
+/* ---- 7. Sync moved into the icon row ---------------------------------- */
+.sync-icon-btn.syncing { color: var(--jade-400); }
+.sync-icon-btn.error { color: var(--coral-400); }
+
+/* ---- 8. Pane switch: mobile only -------------------------------------- */
+.pane-switch { display: none; }
+
+@media (max-width: 900px) {
+  .pane-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    flex: 0 0 auto;
+    margin: 0 0 6px;
+    padding: 2px;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-sm);
+    background: var(--ink-850);
+  }
+
+  .pane-switch button {
+    min-height: 32px;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 6px;
+    color: var(--text-dim);
+    background: transparent;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .pane-switch button.active {
+    color: var(--jade-ink);
+    background: var(--jade-500);
+  }
+
+  /* One pane at a time — this is what removes the scroll. */
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .dashboard-grid.pane-sheet .payroll-panel,
+  .dashboard-grid.pane-salary .ledger-panel { display: none; }
+
+  .tab-content {
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .month-view {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .payroll-panel {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* The breakdown row count is unbounded — allowances, bonuses and deductions
+     are all user-defined. It fits without scrolling at the default row count,
+     but this stays scrollable rather than `hidden`, because clipping a salary
+     figure out of sight is worse than a scrollbar that only appears when the
+     list genuinely outgrows the pane. */
+  .breakdown-cards {
+    gap: 6px;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-container { padding: 4px 6px 6px; }
+
+  /* The 44px touch floor applies to controls the finger hunts for, not to
+     every cell — forcing it on the header pushed the table off-screen. */
+  .month-nav,
+  .month-pill,
+  .icon-btn,
+  .account-fab { min-height: 38px; }
+
+  .month-nav { width: 38px; height: 38px; }
+  .month-pill { height: 38px; }
+
+  .header {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  .ledger-panel { --chrome: 168px; }
+
+  /* Rather than guessing the chrome height, let the table fill whatever the
+     flex layout leaves it. Rows stretch to share that height, so the sheet
+     self-fits any phone as long as each row's intrinsic height is small
+     enough to start with. A cell treats `height` as a minimum, so the input
+     has to shrink first or it drags every row back up to its own height. */
+  .data-table {
+    height: 100%;
+    min-width: 0 !important;
+  }
+
+  .data-table th {
+    height: auto;
+    padding: 2px 4px;
+    font-size: var(--fs-3xs);
+  }
+
+  .data-table td {
+    height: auto;
+    padding: 0 4px;
+    font-size: var(--fs-3xs);
+    line-height: 1.1;
+  }
+
+  .editable-cell { padding: 0; }
+
+  .editable-cell input {
+    min-height: 0;
+    height: 14px;
+    border-radius: 4px;
+    font-size: var(--fs-3xs);
+    line-height: 1;
+  }
+
+  .bonus-cell { font-size: var(--fs-3xs); }
+
+  .table-footer-row td {
+    height: auto;
+    font-size: var(--fs-3xs);
+  }
+}
+
+@media (max-width: 900px) {
+  /* The hero was a 287px vertical stack; as a single band it costs ~52px and
+     hands the difference to the timesheet. */
+  .summary-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'period net' 'metrics metrics';
+    gap: 1px;
+    flex: 0 0 auto;
+  }
+
+  .summary-period {
+    grid-area: period;
+    gap: 6px;
+    padding: 5px 8px;
+  }
+
+  .summary-period-icon { display: none; }
+  .summary-kicker { display: none; }
+
+  .summary-period-copy { gap: 0; }
+  .summary-title-row strong { font-size: var(--fs-sm); }
+  .summary-range { font-size: var(--fs-3xs); }
+
+  .summary-net {
+    grid-area: net;
+    order: 0;
+    align-items: flex-end;
+    min-height: 0;
+    padding: 5px 10px;
+    text-align: right;
+  }
+
+  .summary-net > span { font-size: var(--fs-3xs); }
+
+  .summary-metrics {
+    grid-area: metrics;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    padding: 0;
+  }
+
+  .summary-metric {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 4px 8px;
+  }
+
+  .summary-metric span { font-size: var(--fs-3xs); }
+  .summary-metric strong { font-size: var(--fs-sm); }
+
+  .bonus-detail-line {
+    grid-column: 1 / -1;
+    padding: 3px 8px;
+    font-size: var(--fs-3xs);
+  }
+
+  /* Header collapses to a single row: title, period nav, then icons. */
+  .header {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+  }
+
+  .header-left {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+  }
+
+  .header-controls {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 4px;
+    width: auto;
+  }
+
+  .header-top {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .month-nav { width: 32px; height: 32px; min-height: 32px; }
+  .month-pill { height: 32px; min-height: 32px; min-width: 0; padding: 0 7px; }
+  .icon-btn { width: 32px; height: 32px; min-height: 32px; }
+  .account-fab { height: 32px; min-height: 32px; padding: 0 8px; }
+  .account-fab span { max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Period and net sit on one 40px line; metrics take a 30px line below. */
+  .summary-period,
+  .summary-net { min-height: 0; padding: 4px 8px; }
+
+  .summary-metric { padding: 3px 8px; }
+
+  .header-title span:last-child { display: none; }
+  .led-ticker { display: none; }
+
+  /* No horizontal scroll either — the table fits the width it is given. */
+  .ledger-panel {
+    overflow: hidden !important;
+    --col-day: 32px;
+    --col-weekday: 32px;
+    --col-ot: calc((100% - 64px) / 4);
+  }
+
+  .data-table { min-width: 0 !important; }
+}
+
+@media (max-width: 480px) {
+  .ledger-panel {
+    --col-day: 28px;
+    --col-weekday: 28px;
+    --col-ot: calc((100% - 56px) / 4);
+  }
+
+  .data-table th { font-size: 8px; letter-spacing: 0; }
+  .header { padding: 4px 6px; }
+}
+
+/* A usable row has a floor: below roughly 15px the OT cell stops being
+   tappable. On a short viewport, 31 days plus heading and totals cannot clear
+   that floor, so the sheet scrolls there instead of shrinking into rows nobody
+   can hit. Taller phones still show the whole period at once. */
+@media (max-width: 900px) and (max-height: 740px) {
+  .ledger-panel {
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  .data-table { height: auto; }
+}

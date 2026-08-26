@@ -160,6 +160,9 @@ function App() {
 
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  // Mobile only: the timesheet and the payroll breakdown cannot both fit in one
+  // viewport, so they become two panes of a segmented control instead of a scroll.
+  const [mobilePane, setMobilePane] = useState<'sheet' | 'salary'>('sheet');
   const [syncCode, setSyncCode] = useState('');
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ state: 'idle', message: '' });
   const [autoSyncCode, setAutoSyncCode] = useState('');
@@ -757,8 +760,31 @@ function App() {
             })()}
           </div>
         </section>
-        <div className="dashboard-grid">
-          <div className="ledger-panel">
+        <div className="pane-switch" role="tablist" aria-label="Chọn khu vực hiển thị">
+          <button
+            role="tab"
+            id="pane-tab-sheet"
+            aria-selected={mobilePane === 'sheet'}
+            aria-controls="pane-sheet"
+            className={mobilePane === 'sheet' ? 'active' : ''}
+            onClick={() => setMobilePane('sheet')}
+          >
+            Chấm công
+          </button>
+          <button
+            role="tab"
+            id="pane-tab-salary"
+            aria-selected={mobilePane === 'salary'}
+            aria-controls="pane-salary"
+            className={mobilePane === 'salary' ? 'active' : ''}
+            onClick={() => setMobilePane('salary')}
+          >
+            Lương
+          </button>
+        </div>
+
+        <div className={`dashboard-grid pane-${mobilePane}`}>
+          <div className="ledger-panel" id="pane-sheet" role="tabpanel" aria-labelledby="pane-tab-sheet">
             <table className="data-table">
               <colgroup>
                 <col className="col-day" />
@@ -857,7 +883,7 @@ function App() {
             </table>
           </div>
 
-          <aside className="payroll-panel" aria-label="Chi tiết lương">
+          <aside className="payroll-panel" id="pane-salary" role="tabpanel" aria-labelledby="pane-tab-salary" aria-label="Chi tiết lương">
             <div className="breakdown-cards">
               <div className="breakdown-card allowances">
                 <h3><Plus size={14} strokeWidth={2.5} /> TRỢ CẤP</h3>
@@ -1215,28 +1241,17 @@ function App() {
           </div>
         </div>
         <div className="header-controls">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button className={`sync-btn ${syncStatus.state === 'syncing' ? 'syncing' : ''} ${syncStatus.state === 'error' ? 'error' : ''}`} onClick={() => setShowSyncModal(true)} title={syncStatus.message || 'Đồng bộ'}>
-              {syncStatus.state === 'error' ? <X size={14} aria-hidden="true" /> : <Cloud size={14} aria-hidden="true" />}
-              Đồng bộ
-            </button>
-          </div>
           <Clock />
           <div className="header-data-group">
-            <div className="input-group">
-              <label>NPT:</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={data.dependents}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  updateData({ dependents: isNaN(val) ? 0 : val });
-                }}
-                style={{ width: '50px', textAlign: 'center' }}
-              />
-            </div>
-            <button className="icon-btn" title="Cài đặt" onClick={() => setShowSettingsModal(true)}><Settings size={16} /></button>
+            <button
+              className={`icon-btn sync-icon-btn ${syncStatus.state === 'syncing' ? 'syncing' : ''} ${syncStatus.state === 'error' ? 'error' : ''}`}
+              title={syncStatus.message || 'Đồng bộ'}
+              aria-label="Đồng bộ Cloud"
+              onClick={() => setShowSyncModal(true)}
+            >
+              {syncStatus.state === 'error' ? <X size={16} aria-hidden="true" /> : <Cloud size={16} aria-hidden="true" />}
+            </button>
+            <button className="icon-btn" title="Cài đặt" aria-label="Cài đặt" onClick={() => setShowSettingsModal(true)}><Settings size={16} /></button>
           </div>
 
           {/* Account button - replaces logout */}
@@ -1436,6 +1451,20 @@ function App() {
                       style={{ width: '100%', textAlign: 'left' }}
                     />
                   </div>
+                </div>
+
+                <div className="form-group compact">
+                  <label>Người phụ thuộc (NPT)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={data.dependents}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      updateData({ dependents: isNaN(val) ? 0 : val });
+                    }}
+                    aria-label="Số người phụ thuộc"
+                  />
                 </div>
 
                 <div className="settings-row-3">
