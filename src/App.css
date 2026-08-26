@@ -2029,7 +2029,7 @@ body::before {
   min-width: 0;
   min-height: 0;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid var(--rule-strong);
   border-radius: 0;
   background: var(--ink-800);
@@ -2042,7 +2042,16 @@ body::before {
   --col-day: 8%;
   --col-weekday: 8%;
   --col-ot: 21%;
+  flex: 1.4 1 0;
+  min-height: 0;
 }
+
+.payroll-panel {
+  flex: 0.85 1 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .data-table {
   width: 100%;
   min-width: 0;
@@ -2673,11 +2682,20 @@ body { font-size: var(--fs-sm); }
     height: 100%;
     min-height: 0;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ledger-panel {
+    min-height: 0;
+    overflow: hidden;
+    flex: 1.55 1 0;
   }
 
   .payroll-panel {
     min-height: 0;
-    overflow: hidden;
+    overflow-y: auto;
+    flex: 0.75 1 0;
   }
 
   /* The breakdown row count is unbounded — allowances, bonuses and deductions
@@ -2687,7 +2705,7 @@ body { font-size: var(--fs-sm); }
      list genuinely outgrows the pane. */
   .breakdown-cards {
     gap: 6px;
-    height: 100%;
+    height: auto;
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -2868,4 +2886,86 @@ body { font-size: var(--fs-sm); }
   .data-table th { font-size: 8px; letter-spacing: 0; }
   .header { padding: 4px 6px; }
 }
+
+/* Cửa sổ hẹp: ưu tiên bảng tăng ca phía trên, chi tiết lương phía dưới. */
+@media (max-width: 1100px) {
+  html,
+  body,
+  #root,
+  .payroll-app {
+    height: auto;
+    min-height: 100svh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
+  }
+
+  .tab-content,
+  .month-view {
+    height: auto;
+    overflow: visible;
+  }
+
+  .pane-switch {
+    display: none;
+  }
+
+  /* Không để tiêu đề lệch theo độ rộng của logo hoặc các nút thao tác. */
+  .header {
+    position: relative;
+  }
+
+  .header-period {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 101;
+  }
+
+  .dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+    gap: 10px;
+  }
+
+  .dashboard-grid.pane-sheet .payroll-panel,
+  .dashboard-grid.pane-salary .ledger-panel {
+    display: block;
+  }
+
+  .ledger-panel {
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+    overflow: visible !important;
+  }
+
+  .data-table {
+    height: auto;
+    min-height: 0;
+  }
+
+  .payroll-panel {
+    flex: 0 0 auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .breakdown-cards {
+    height: auto;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 480px) {
+  .ledger-panel {
+    flex-basis: auto;
+    height: auto;
+  }
+}
+
+
 
