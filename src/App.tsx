@@ -29,7 +29,7 @@ import {
   TrendingUp, User as UserIcon, Cloud, Settings, LogOut,
   Plus, Minus, CheckCircle, XCircle, AlertTriangle,
   Lock, KeyRound, DollarSign, Gift, CalendarDays,
-  Upload, Download, X, ChevronLeft, ChevronRight, ChevronDown
+  Upload, Download, ChevronLeft, ChevronRight, ChevronDown
 } from 'lucide-react'
 
 const isSundayIso = (dateIso: string) => new Date(`${dateIso}T00:00:00`).getDay() === 0;
@@ -1243,14 +1243,6 @@ function App() {
         <div className="header-controls">
           <Clock />
           <div className="header-data-group">
-            <button
-              className={`icon-btn sync-icon-btn ${syncStatus.state === 'syncing' ? 'syncing' : ''} ${syncStatus.state === 'error' ? 'error' : ''}`}
-              title={syncStatus.message || 'Đồng bộ'}
-              aria-label="Đồng bộ Cloud"
-              onClick={() => setShowSyncModal(true)}
-            >
-              {syncStatus.state === 'error' ? <X size={16} aria-hidden="true" /> : <Cloud size={16} aria-hidden="true" />}
-            </button>
             <button className="icon-btn" title="Cài đặt" aria-label="Cài đặt" onClick={() => setShowSettingsModal(true)}><Settings size={16} /></button>
           </div>
 
@@ -1646,6 +1638,12 @@ function App() {
             </div>
 
             <div className="modal-actions">
+              <button
+                className={`btn btn-secondary ${syncStatus.state === 'syncing' ? 'syncing' : ''} ${syncStatus.state === 'error' ? 'error' : ''}`}
+                onClick={() => { setShowSettingsModal(false); setShowSyncModal(true); }}
+              >
+                <Cloud size={14} aria-hidden="true" /> Đồng bộ Cloud
+              </button>
               <button className="btn btn-primary" onClick={() => setShowSettingsModal(false)} style={{ marginLeft: 'auto' }}>Xong</button>
             </div>
           </div>
