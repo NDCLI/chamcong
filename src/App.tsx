@@ -721,42 +721,44 @@ function App() {
 
     return (
       <div className="month-view">
-        <section className="period-overview" aria-label={`Tóm tắt kỳ lương tháng ${month} năm ${data.year}`}>
-          <div className="period-overview-main">
-            <span className="period-overview-icon" aria-hidden="true"><CalendarDays size={19} /></span>
-            <div className="period-overview-copy">
-              <span className="period-overview-kicker">KỲ LƯƠNG</span>
-              <div className="period-overview-title-row">
+        <section className="summary-hero" aria-label={`Tóm tắt kỳ lương tháng ${month} năm ${data.year}`}>
+          <div className="summary-period">
+            <span className="summary-period-icon" aria-hidden="true"><CalendarDays size={20} /></span>
+            <div className="summary-period-copy">
+              <span className="summary-kicker">KỲ LƯƠNG</span>
+              <div className="summary-title-row">
                 <strong>Tháng {String(month).padStart(2, '0')} / {data.year}</strong>
                 {isViewingCurrentPeriod && <span className="current-period-badge">Hiện tại</span>}
               </div>
-              <span className="period-overview-range">{formatPeriodDate(dates[0])} – {formatPeriodDate(dates[dates.length - 1])}</span>
+              <span className="summary-range">{formatPeriodDate(dates[0])} – {formatPeriodDate(dates[dates.length - 1])}</span>
             </div>
           </div>
-          <div className="period-overview-stats">
-            <div className="period-overview-stat">
+
+          <div className={`summary-net ${s.net < 0 ? 'negative' : ''}`} aria-label={`Thực nhận ${fmt(s.net)} đồng`}>
+            <span>THỰC NHẬN</span>
+            <div><strong>{fmt(s.net)}</strong><small>₫</small></div>
+          </div>
+
+          <div className="summary-metrics">
+            <div className="summary-metric">
               <span>OT thường</span>
               <strong>{totalNormalOtHours}h</strong>
             </div>
-            <div className="period-overview-stat bonus">
+            <div className="summary-metric bonus">
               <span>Bonus OT</span>
               <strong>{totalBonusOtHours}h</strong>
             </div>
-            <div className="period-overview-stat salary">
-              <span>Thực nhận</span>
-              <strong>{fmt(s.net)} ₫</strong>
-            </div>
+            {(() => {
+              const parts: string[] = [];
+              if (hBonus150 > 0) parts.push(`150%: ${Math.round(hBonus150 * 100) / 100}h`);
+              if (hBonus200 > 0) parts.push(`200%: ${Math.round(hBonus200 * 100) / 100}h`);
+              if (hBonus300 > 0) parts.push(`300%: ${Math.round(hBonus300 * 100) / 100}h`);
+              return parts.length > 0 ? <div className="bonus-detail-line">Bonus: {parts.join(' · ')}</div> : null;
+            })()}
           </div>
-          {(() => {
-            const parts: string[] = [];
-            if (hBonus150 > 0) parts.push(`150%: ${Math.round(hBonus150 * 100) / 100}h`);
-            if (hBonus200 > 0) parts.push(`200%: ${Math.round(hBonus200 * 100) / 100}h`);
-            if (hBonus300 > 0) parts.push(`300%: ${Math.round(hBonus300 * 100) / 100}h`);
-            return parts.length > 0 ? <div className="bonus-detail-line">Bonus: {parts.join(' · ')}</div> : null;
-          })()}
         </section>
-        <div className="month-content">
-          <div className="month-table-container">
+        <div className="dashboard-grid">
+          <div className="ledger-panel">
             <table className="data-table">
               <colgroup>
                 <col className="col-day" />
@@ -812,6 +814,7 @@ function App() {
                           rowIndex={rIdx}
                           colIndex={0}
                           onChange={val => updateMonthOT(month, dateIso, 0, val)}
+                          ariaLabel={`OT 150% ngày ${dStr}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`}
                           title={ot[0] && rowRes0.bonus > 0 ? `Nhập: ${ot[0]}h → Tính: ${rowRes0.normal}h (Bonus: ${rowRes0.bonus}h)` : undefined}
                         />
                       </td>
@@ -822,6 +825,7 @@ function App() {
                           rowIndex={rIdx}
                           colIndex={1}
                           onChange={val => updateMonthOT(month, dateIso, 1, val)}
+                          ariaLabel={`OT 200% ngày ${dStr}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`}
                           title={ot[1] && rowRes1.bonus > 0 ? `Nhập: ${ot[1]}h → Tính: ${rowRes1.normal}h (Bonus: ${rowRes1.bonus}h)` : undefined}
                         />
                       </td>
@@ -832,6 +836,7 @@ function App() {
                           rowIndex={rIdx}
                           colIndex={2}
                           onChange={val => updateMonthOT(month, dateIso, 2, val)}
+                          ariaLabel={`OT 300% ngày ${dStr}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`}
                           title={ot[2] && rowRes2.bonus > 0 ? `Nhập: ${ot[2]}h → Tính: ${rowRes2.normal}h (Bonus: ${rowRes2.bonus}h)` : undefined}
                         />
                       </td>
@@ -852,20 +857,20 @@ function App() {
             </table>
           </div>
 
-          <div className="breakdown-container">
+          <aside className="payroll-panel" aria-label="Chi tiết lương">
             <div className="breakdown-cards">
               <div className="breakdown-card allowances">
                 <h3><Plus size={14} strokeWidth={2.5} /> TRỢ CẤP</h3>
-                <div className="bd-row"><span>Thưởng hè:</span> <span>{fmt(s.the)} VNĐ</span></div>
+                <div className="bd-row"><span>Thưởng hè:</span> <span className="money-value">{fmt(s.the)} VNĐ</span></div>
                 {currentSettings.allowances.map((al, idx) => (
-                  <div className="bd-row" key={idx}><span>{al.name}:</span> <span>{fmt(al.amount)} VNĐ</span></div>
+                  <div className="bd-row" key={idx}><span>{al.name}:</span> <span className="money-value">{fmt(al.amount)} VNĐ</span></div>
                 ))}
               </div>
 
               <div className="breakdown-card additions">
                 <h3><Plus size={14} strokeWidth={2.5} /> TĂNG CA/THƯỞNG</h3>
-                <div className="bd-row"><span>Tiền OT{totalNormalOtHours > 0 ? ` (${totalNormalOtHours}h)` : ''}:</span> <span>{fmt(s.ovt)} VNĐ</span></div>
-                {s.bonus_ot_pay > 0 && <div className="bd-row"><span>Bonus OT{totalBonusOtHours > 0 ? ` (${totalBonusOtHours}h)` : ''}:</span> <span>{fmt(s.bonus_ot_pay)} VNĐ</span></div>}
+                <div className="bd-row"><span>Tiền OT{totalNormalOtHours > 0 ? ` (${totalNormalOtHours}h)` : ''}:</span> <span className="money-value">{fmt(s.ovt)} VNĐ</span></div>
+                {s.bonus_ot_pay > 0 && <div className="bd-row"><span>Bonus OT{totalBonusOtHours > 0 ? ` (${totalBonusOtHours}h)` : ''}:</span> <span className="money-value">{fmt(s.bonus_ot_pay)} VNĐ</span></div>}
                 {settingsBonuses.map((bn, idx) => {
                   const monthAmount = bonusAmounts[idx] ?? bn.amount;
                   return (
@@ -895,7 +900,7 @@ function App() {
                     />
                   </div>
                 ))}
-                <div className="bd-row" style={{ marginTop: '10px' }}>
+                <div className="bd-row bd-row-spaced">
                   <span>Khác (VNĐ):</span>
                   <EditableCurrency
                     value={mData.other}
@@ -907,33 +912,19 @@ function App() {
 
               <div className="breakdown-card deductions">
                 <h3><Minus size={14} strokeWidth={2.5} /> KHẤU TRỪ</h3>
-                <div className="bd-row"><span>BHXH ({currentSettings.bhxh_pct}%):</span> <span>{fmt(s.bhxh)} VNĐ</span></div>
-                <div className="bd-row"><span>BHYT ({currentSettings.bhyt_pct}%):</span> <span>{fmt(s.bhyt)} VNĐ</span></div>
-                <div className="bd-row"><span>BHTN ({currentSettings.bhtn_pct}%):</span> <span>{fmt(s.bhtn)} VNĐ</span></div>
-                <div className="bd-row"><span>Công đoàn:</span> <span>{fmt(s.cd)} VNĐ</span></div>
-                {currentSettings.other_deduction > 0 && <div className="bd-row"><span>Trừ khác:</span> <span>{fmt(currentSettings.other_deduction)} VNĐ</span></div>}
+                <div className="bd-row"><span>BHXH ({currentSettings.bhxh_pct}%):</span> <span className="money-value">{fmt(s.bhxh)} VNĐ</span></div>
+                <div className="bd-row"><span>BHYT ({currentSettings.bhyt_pct}%):</span> <span className="money-value">{fmt(s.bhyt)} VNĐ</span></div>
+                <div className="bd-row"><span>BHTN ({currentSettings.bhtn_pct}%):</span> <span className="money-value">{fmt(s.bhtn)} VNĐ</span></div>
+                <div className="bd-row"><span>Công đoàn:</span> <span className="money-value">{fmt(s.cd)} VNĐ</span></div>
+                {currentSettings.other_deduction > 0 && <div className="bd-row"><span>Trừ khác:</span> <span className="money-value">{fmt(currentSettings.other_deduction)} VNĐ</span></div>}
                 {deductions.map((ded, idx) => (
-                  <div className="bd-row" key={`ded-${idx}`}><span>{ded.name || 'Khoản trừ'}:</span> <span>{fmt(ded.amount)} VNĐ</span></div>
+                  <div className="bd-row" key={`ded-${idx}`}><span>{ded.name || 'Khoản trừ'}:</span> <span className="money-value">{fmt(ded.amount)} VNĐ</span></div>
                 ))}
-                <div className="bd-row pit"><span>Thuế TNCN:</span> <span>{fmt(s.pit)} VNĐ</span></div>
-                <div className="bd-row deduction-total"><span>Tổng khấu trừ:</span> <span>{fmt(totalDeductions)} VNĐ</span></div>
+                <div className="bd-row pit"><span>Thuế TNCN:</span> <span className="money-value">{fmt(s.pit)} VNĐ</span></div>
+                <div className="bd-row deduction-total"><span>Tổng khấu trừ:</span> <span className="money-value">{fmt(totalDeductions)} VNĐ</span></div>
               </div>
             </div>
-
-            {/* Decorative animated background below the breakdown */}
-            <div className="ambient-card" aria-hidden="true">
-              <div className="ambient-orb ambient-orb-1" />
-              <div className="ambient-orb ambient-orb-2" />
-              <div className="ambient-orb ambient-orb-3" />
-              <div className="ambient-grid" />
-              <div className="ambient-stars">
-                <i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i><i>✦</i><i>✧</i>
-              </div>
-              <div className="ambient-coins">
-                <span>₫</span><span>₫</span><span>₫</span><span>₫</span><span>₫</span>
-              </div>
-            </div>
-          </div>
+          </aside>
         </div>
       </div>
     );
@@ -1123,7 +1114,7 @@ function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-container payroll-app">
       <header className="header">
         <div className="header-left">
           <div className="header-top">
