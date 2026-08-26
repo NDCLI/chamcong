@@ -7,9 +7,10 @@ interface EditableCellProps {
   rowIndex: number;
   colIndex: number;
   title?: string;
+  ariaLabel?: string;
 }
 
-export const EditableCell = ({ value, displayValue, onChange, rowIndex, colIndex, title }: EditableCellProps) => {
+export const EditableCell = ({ value, displayValue, onChange, rowIndex, colIndex, title, ariaLabel }: EditableCellProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [localValue, setLocalValue] = useState<string>(value ? String(value) : '');
 
@@ -59,6 +60,7 @@ export const EditableCell = ({ value, displayValue, onChange, rowIndex, colIndex
       data-row={rowIndex}
       data-col={colIndex}
       title={title}
+      aria-label={ariaLabel}
     />
   );
 };
