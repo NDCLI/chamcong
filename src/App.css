@@ -1817,7 +1817,7 @@ body::before {
 .summary-hero {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: minmax(230px, 0.9fr) minmax(300px, 1.25fr) minmax(250px, 0.9fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   gap: 1px;
   margin-bottom: var(--sp-4);
@@ -1839,6 +1839,7 @@ body::before {
 .summary-period {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--sp-4);
 }
 .summary-period-icon {
@@ -1852,7 +1853,7 @@ body::before {
   color: var(--sky-400);
   background: rgba(99, 179, 245, 0.08);
 }
-.summary-period-copy { min-width: 0; display: grid; gap: 2px; }
+.summary-period-copy { min-width: 0; display: grid; gap: 2px; justify-items: center; text-align: center; }
 .summary-kicker,
 .summary-net > span {
   color: var(--text-dim);
@@ -1860,9 +1861,10 @@ body::before {
   font-weight: 800;
   letter-spacing: 0.12em;
 }
-.summary-title-row { display: flex; align-items: center; gap: var(--sp-2); }
+.summary-title-row { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); }
 .summary-title-row strong { font-size: var(--fs-xl); line-height: 1.2; color: var(--text-hi); }
 .summary-range {
+  display: none;
   color: var(--text);
   font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
@@ -1896,6 +1898,54 @@ body::before {
   transform: translateX(-50%);
   background: var(--jade-500);
   box-shadow: 0 0 16px rgba(45, 212, 167, 0.38);
+}
+
+.header-period {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 3px 8px 3px 4px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  background: var(--ink-850);
+}
+.header-period-calendar {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  padding: 0;
+  border: 1px solid rgba(99, 179, 245, 0.25);
+  border-radius: 7px;
+  color: var(--sky-400);
+  background: rgba(99, 179, 245, 0.08);
+  cursor: pointer;
+  transition: .2s ease;
+}
+.header-period-calendar:hover,
+.header-period-calendar.active {
+  color: var(--jade-400);
+  border-color: rgba(45, 212, 167, 0.45);
+  background: var(--jade-wash);
+}
+.header-period-copy { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.header-period-copy span { color: var(--text-dim); font-size: var(--fs-3xs); font-weight: 800; letter-spacing: .09em; }
+.header-period-copy strong { color: var(--text-hi); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.header-period-picker { top: calc(100% + 8px); left: 0; right: auto; }
+
+@media (min-width: 901px) {
+  .header { position: relative; }
+  .header-period {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 101;
+  }
+  .header-period-picker { transform: none; }
 }
 .summary-net > div { display: flex; align-items: baseline; justify-content: center; gap: var(--sp-2); min-width: 0; }
 .summary-net strong {
@@ -1944,11 +1994,12 @@ body::before {
 }
 
 .dashboard-grid {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(330px, 2fr);
-  gap: var(--sp-4);
+  grid-template-columns: minmax(0, 3fr) minmax(350px, 2fr);
+  gap: 0;
   align-items: stretch;
 }
 
@@ -1959,17 +2010,21 @@ body::before {
   height: 100%;
   overflow: auto;
   border: 1px solid var(--rule-strong);
-  border-radius: var(--r-lg);
+  border-radius: 0;
   background: var(--ink-800);
-  box-shadow: var(--shadow-2);
+  box-shadow: none;
   scrollbar-color: var(--ink-700) var(--ink-900);
   scrollbar-width: thin;
 }
 
-.ledger-panel { --col-day: 58px; --col-weekday: 58px; --col-ot: calc((100% - 116px) / 4); }
+.ledger-panel {
+  --col-day: 8%;
+  --col-weekday: 8%;
+  --col-ot: 21%;
+}
 .data-table {
   width: 100%;
-  min-width: 620px;
+  min-width: 0;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -2033,6 +2088,43 @@ body::before {
   font-weight: 800;
 }
 .table-footer-row td:last-child { color: var(--amber-400) !important; }
+
+.net-final {
+  margin-top: auto;
+  align-items: center;
+  text-align: center;
+  background:
+    linear-gradient(90deg, transparent, rgba(45, 212, 167, 0.045), transparent),
+    var(--ink-800);
+}
+.net-final h3 {
+  justify-content: center;
+  margin-bottom: 10px;
+  color: var(--jade-300);
+}
+.net-final-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+}
+.net-final-value strong {
+  color: var(--jade-400);
+  font-size: clamp(22px, 2vw, 30px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.net-final-value small {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.net-final.negative h3,
+.net-final.negative .net-final-value strong {
+  color: var(--coral-400);
+}
 
 .editable-cell input {
   width: 100%;
@@ -2122,6 +2214,32 @@ body::before {
   font-variant-numeric: tabular-nums;
 }
 .bd-row-spaced { margin-top: 10px !important; }
+.bd-row.ot-total-row,
+.bd-row.bonus-total-row {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(245, 190, 75, 0.25);
+  color: var(--amber-300);
+  font-weight: 800;
+}
+.bd-row.ot-total-row {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.bd-row.ot-total-row .money-value,
+.bd-row.bonus-total-row .money-value { color: var(--amber-300); }
+.bd-row.ot-rate-row,
+.bd-row.bonus-rate-row {
+  min-height: 22px;
+  margin-top: 2px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(245, 190, 75, 0.3);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+.bd-row.ot-rate-row .money-value,
+.bd-row.bonus-rate-row .money-value { color: var(--amber-300); }
 .bd-row.pit { color: var(--coral-400); }
 .bd-row.pit .money-value { color: var(--coral-400); }
 .bd-row.deduction-total {
@@ -2439,41 +2557,33 @@ body { font-size: var(--fs-sm); }
   min-width: 0;
 }
 
-/* ---- 5. Rows sized to fit, never to scroll ----------------------------- */
-/* 33 rows = 31 period days + heading + totals. --chrome is everything above
-   the table; the row height falls out of whatever height remains. */
+/* ---- 5. Rows share the actual ledger panel height ----------------------- */
+/* The panel height changes with header and mobile tabs, so viewport arithmetic
+   is unreliable. A 100%-height table distributes its 31 dates, heading and
+   total row inside the panel itself, leaving nothing to clip or scroll. */
 .ledger-panel {
-  --chrome: 200px;
-  --row-h: clamp(16px, calc((100svh - var(--chrome)) / 33), 30px);
   overflow: hidden;
 }
 
-.data-table th {
-  height: calc(var(--row-h) + 4px);
-  padding: 2px 4px;
-  font-size: var(--fs-3xs);
-  letter-spacing: 0.03em;
+.data-table {
+  height: 100%;
 }
 
-.data-table td {
-  height: var(--row-h);
-  padding: 0 4px;
-  font-size: var(--fs-xs);
+.data-table th,
+.data-table td,
+.table-footer-row td {
+  height: auto;
 }
 
 .editable-cell input {
-  height: calc(var(--row-h) - 2px);
+  height: 100%;
+  min-height: 0;
   padding: 0 2px;
   font-size: var(--fs-xs);
   text-align: center;
 }
 
 .bonus-cell { font-size: var(--fs-xs); }
-
-.table-footer-row td {
-  height: calc(var(--row-h) + 2px);
-  font-size: var(--fs-xs);
-}
 
 /* ---- 6. Leaner shell so the table gets the space ----------------------- */
 .app-container { padding: 6px 10px 8px; }
@@ -2629,16 +2739,14 @@ body { font-size: var(--fs-sm); }
      hands the difference to the timesheet. */
   .summary-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: 'period net' 'metrics metrics';
+    grid-template-columns: minmax(0, 1fr);
     gap: 1px;
     flex: 0 0 auto;
   }
 
   .summary-period {
-    grid-area: period;
     gap: 6px;
-    padding: 5px 8px;
+    padding: 8px 10px;
   }
 
   .summary-period-icon { display: none; }
@@ -2647,17 +2755,6 @@ body { font-size: var(--fs-sm); }
   .summary-period-copy { gap: 0; }
   .summary-title-row strong { font-size: var(--fs-sm); }
   .summary-range { font-size: var(--fs-3xs); }
-
-  .summary-net {
-    grid-area: net;
-    order: 0;
-    align-items: flex-end;
-    min-height: 0;
-    padding: 5px 10px;
-    text-align: right;
-  }
-
-  .summary-net > span { font-size: var(--fs-3xs); }
 
   .summary-metrics {
     grid-area: metrics;
@@ -2700,9 +2797,13 @@ body { font-size: var(--fs-sm); }
 
   .header-controls {
     flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     flex-wrap: nowrap;
     gap: 4px;
     width: auto;
+    margin-left: auto;
   }
 
   .header-top {
@@ -2728,9 +2829,9 @@ body { font-size: var(--fs-sm); }
   /* No horizontal scroll either — the table fits the width it is given. */
   .ledger-panel {
     overflow: hidden !important;
-    --col-day: 32px;
-    --col-weekday: 32px;
-    --col-ot: calc((100% - 64px) / 4);
+    --col-day: 28px;
+    --col-weekday: 28px;
+    --col-ot: 62px;
   }
 
   .data-table { min-width: 0 !important; }
@@ -2738,24 +2839,12 @@ body { font-size: var(--fs-sm); }
 
 @media (max-width: 480px) {
   .ledger-panel {
-    --col-day: 28px;
-    --col-weekday: 28px;
-    --col-ot: calc((100% - 56px) / 4);
+    --col-day: 24px;
+    --col-weekday: 24px;
+    --col-ot: 56px;
   }
 
   .data-table th { font-size: 8px; letter-spacing: 0; }
   .header { padding: 4px 6px; }
 }
 
-/* A usable row has a floor: below roughly 15px the OT cell stops being
-   tappable. On a short viewport, 31 days plus heading and totals cannot clear
-   that floor, so the sheet scrolls there instead of shrinking into rows nobody
-   can hit. Taller phones still show the whole period at once. */
-@media (max-width: 900px) and (max-height: 740px) {
-  .ledger-panel {
-    overflow-y: auto !important;
-    overscroll-behavior: contain;
-  }
-
-  .data-table { height: auto; }
-}

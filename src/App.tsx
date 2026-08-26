@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 import './App.css'
-import { calc, fmt, pf, datesOfMonth, defaultConfig, getPayrollPeriod, isHoliday, isTet, isLunarHoliday, shiftPayrollPeriod, splitOvertime } from './logic'
+import { calc, fmt, pf, datesOfMonth, defaultConfig, getPayrollPeriod, isHoliday, isTet, isLunarHoliday, splitOvertime } from './logic'
 import type { AppData, AppSettings, Allowance, SyncStatus } from './types'
 import { DEFAULT_SETTINGS, WEEKDAYS } from './constants'
 import { storageDataKey, storageSyncKey, getLocalDateStr } from './storage'
@@ -367,13 +367,6 @@ function App() {
     setData(prev => ({ ...prev, ...updates, lastUpdated: Date.now() }));
   };
 
-  const movePayrollPeriod = (offset: number) => {
-    const next = shiftPayrollPeriod(data.year, activeTab, offset);
-    setActiveTab(next.month);
-    if (next.year !== data.year) updateData({ year: next.year });
-    setShowMonthDropdown(false);
-  };
-
   const goToCurrentPayrollPeriod = () => {
     const current = getPayrollPeriod();
     setActiveTab(current.month);
@@ -721,45 +714,16 @@ function App() {
     const todayIso = getLocalDateStr(new Date());
     const totalNormalOtHours = Math.round((h150 + h200 + h300) * 100) / 100;
     const totalBonusOtHours = Math.round((hBonus150 + hBonus200 + hBonus300) * 100) / 100;
+    const hourlyRate = data.lcb / customConfig.rates.gio_chuan;
+    const ot150Pay = Math.round(hourlyRate * h150 * 1.5);
+    const ot200Pay = Math.round(hourlyRate * h200 * 2);
+    const ot300Pay = Math.round(hourlyRate * h300 * 3);
+    const bonus150Pay = Math.round(hourlyRate * hBonus150 * 1.5);
+    const bonus200Pay = Math.round(hourlyRate * hBonus200 * 2);
+    const bonus300Pay = Math.round(hourlyRate * hBonus300 * 3);
 
     return (
       <div className="month-view">
-        <section className="summary-hero" aria-label={`Tóm tắt kỳ lương tháng ${month} năm ${data.year}`}>
-          <div className="summary-period">
-            <span className="summary-period-icon" aria-hidden="true"><CalendarDays size={20} /></span>
-            <div className="summary-period-copy">
-              <span className="summary-kicker">KỲ LƯƠNG</span>
-              <div className="summary-title-row">
-                <strong>Tháng {String(month).padStart(2, '0')} / {data.year}</strong>
-                {isViewingCurrentPeriod && <span className="current-period-badge">Hiện tại</span>}
-              </div>
-              <span className="summary-range">{formatPeriodDate(dates[0])} – {formatPeriodDate(dates[dates.length - 1])}</span>
-            </div>
-          </div>
-
-          <div className={`summary-net ${s.net < 0 ? 'negative' : ''}`} aria-label={`Thực nhận ${fmt(s.net)} đồng`}>
-            <span>THỰC NHẬN</span>
-            <div><strong>{fmt(s.net)}</strong><small>₫</small></div>
-          </div>
-
-          <div className="summary-metrics">
-            <div className="summary-metric">
-              <span>OT thường</span>
-              <strong>{totalNormalOtHours}h</strong>
-            </div>
-            <div className="summary-metric bonus">
-              <span>Bonus OT</span>
-              <strong>{totalBonusOtHours}h</strong>
-            </div>
-            {(() => {
-              const parts: string[] = [];
-              if (hBonus150 > 0) parts.push(`150%: ${Math.round(hBonus150 * 100) / 100}h`);
-              if (hBonus200 > 0) parts.push(`200%: ${Math.round(hBonus200 * 100) / 100}h`);
-              if (hBonus300 > 0) parts.push(`300%: ${Math.round(hBonus300 * 100) / 100}h`);
-              return parts.length > 0 ? <div className="bonus-detail-line">Bonus: {parts.join(' · ')}</div> : null;
-            })()}
-          </div>
-        </section>
         <div className="pane-switch" role="tablist" aria-label="Chọn khu vực hiển thị">
           <button
             role="tab"
@@ -801,7 +765,7 @@ function App() {
                   <th>OT 150%</th>
                   <th>OT 200%</th>
                   <th>OT 300%</th>
-                  <th>Bonus OT</th>
+                  <th>OT / Thưởng</th>
                 </tr>
               </thead>
               <tbody>
@@ -895,8 +859,51 @@ function App() {
 
               <div className="breakdown-card additions">
                 <h3><Plus size={14} strokeWidth={2.5} /> TĂNG CA/THƯỞNG</h3>
-                <div className="bd-row"><span>Tiền OT{totalNormalOtHours > 0 ? ` (${totalNormalOtHours}h)` : ''}:</span> <span className="money-value">{fmt(s.ovt)} VNĐ</span></div>
-                {s.bonus_ot_pay > 0 && <div className="bd-row"><span>Bonus OT{totalBonusOtHours > 0 ? ` (${totalBonusOtHours}h)` : ''}:</span> <span className="money-value">{fmt(s.bonus_ot_pay)} VNĐ</span></div>}
+                <div className="bd-row ot-total-row">
+                  <span>Tổng OT ({totalNormalOtHours}h):</span>
+                  <span className="money-value">{fmt(s.ovt)} VNĐ</span>
+                </div>
+                {h150 > 0 && (
+                  <div className="bd-row ot-rate-row">
+                    <span>OT 150% ({h150}h):</span>
+                    <span className="money-value">{fmt(ot150Pay)} VNĐ</span>
+                  </div>
+                )}
+                {h200 > 0 && (
+                  <div className="bd-row ot-rate-row">
+                    <span>OT 200% ({h200}h):</span>
+                    <span className="money-value">{fmt(ot200Pay)} VNĐ</span>
+                  </div>
+                )}
+                {h300 > 0 && (
+                  <div className="bd-row ot-rate-row">
+                    <span>OT 300% ({h300}h):</span>
+                    <span className="money-value">{fmt(ot300Pay)} VNĐ</span>
+                  </div>
+                )}
+
+                <div className="bd-row bonus-total-row">
+                  <span>Tổng Bonus ({totalBonusOtHours}h):</span>
+                  <span className="money-value">{fmt(s.bonus_ot_pay)} VNĐ</span>
+                </div>
+                {hBonus150 > 0 && (
+                  <div className="bd-row bonus-rate-row">
+                    <span>Bonus 150% · Ngày thường ({hBonus150}h):</span>
+                    <span className="money-value">{fmt(bonus150Pay)} VNĐ</span>
+                  </div>
+                )}
+                {hBonus200 > 0 && (
+                  <div className="bd-row bonus-rate-row">
+                    <span>Bonus 200% · Thứ 7 ({hBonus200}h):</span>
+                    <span className="money-value">{fmt(bonus200Pay)} VNĐ</span>
+                  </div>
+                )}
+                {hBonus300 > 0 && (
+                  <div className="bd-row bonus-rate-row">
+                    <span>Bonus 300% · Chủ nhật ({hBonus300}h):</span>
+                    <span className="money-value">{fmt(bonus300Pay)} VNĐ</span>
+                  </div>
+                )}
                 {settingsBonuses.map((bn, idx) => {
                   const monthAmount = bonusAmounts[idx] ?? bn.amount;
                   return (
@@ -948,6 +955,11 @@ function App() {
                 ))}
                 <div className="bd-row pit"><span>Thuế TNCN:</span> <span className="money-value">{fmt(s.pit)} VNĐ</span></div>
                 <div className="bd-row deduction-total"><span>Tổng khấu trừ:</span> <span className="money-value">{fmt(totalDeductions)} VNĐ</span></div>
+              </div>
+
+              <div className={`breakdown-card net-final ${s.net < 0 ? 'negative' : ''}`} aria-label={`Thực nhận ${fmt(s.net)} đồng`}>
+                <h3>THỰC NHẬN</h3>
+                <div className="net-final-value"><strong>{fmt(s.net)}</strong><small> VNĐ</small></div>
               </div>
             </div>
           </aside>
@@ -1148,12 +1160,9 @@ function App() {
               <span className="header-title-icon" aria-hidden="true"><TrendingUp size={17} /></span>
               <span>Bảng chấm công</span>
             </h1>
-            <div className="header-month-nav" ref={monthNavRef}>
-              <button className="month-nav prev" onClick={() => movePayrollPeriod(-1)} aria-label="Kỳ lương trước" title="Kỳ lương trước">
-                <ChevronLeft size={16} strokeWidth={2.5} />
-              </button>
-              <button 
-                className={`month-pill ${showMonthDropdown ? 'active' : ''}`}
+            <div className="header-period" ref={monthNavRef}>
+              <button
+                className={`header-period-calendar ${showMonthDropdown ? 'active' : ''}`}
                 onClick={() => {
                   setShowMonthDropdown(!showMonthDropdown);
                   setShowAccountMenu(false);
@@ -1162,79 +1171,43 @@ function App() {
                 aria-haspopup="dialog"
                 aria-expanded={showMonthDropdown}
                 aria-controls="payroll-period-picker"
+                title="Chọn kỳ lương"
               >
-                <span className="month-pill-month">Tháng {String(activeTab).padStart(2, '0')}</span>
-                <span className="month-pill-divider" aria-hidden="true" />
-                <span className="month-pill-year">{data.year}</span>
-                <ChevronDown className="month-pill-chevron" size={13} strokeWidth={3} aria-hidden="true" />
+                <CalendarDays size={17} />
               </button>
-              <button className="month-nav next" onClick={() => movePayrollPeriod(1)} aria-label="Kỳ lương tiếp theo" title="Kỳ lương tiếp theo">
-                <ChevronRight size={16} strokeWidth={2.5} />
-              </button>
+              <div className="header-period-copy">
+                <span>KỲ LƯƠNG</span>
+                <strong>Tháng {String(activeTab).padStart(2, '0')} / {data.year}</strong>
+              </div>
 
               {showMonthDropdown && (
-                <div className="month-dropdown-menu" id="payroll-period-picker" role="dialog" aria-label="Chọn tháng và năm">
+                <div className="month-dropdown-menu header-period-picker" id="payroll-period-picker" role="dialog" aria-label="Chọn tháng và năm">
                   <div className="period-dropdown-heading">
-                    <div>
-                      <strong>Chọn kỳ lương</strong>
-                      <span>Kỳ công từ ngày 25 đến ngày 24</span>
-                    </div>
-                    {!isViewingCurrentPeriod && (
-                      <button className="current-period-button" onClick={goToCurrentPayrollPeriod}>Hiện tại</button>
-                    )}
+                    <div><strong>Chọn kỳ lương</strong><span>Kỳ công từ ngày 25 đến ngày 24</span></div>
+                    {!isViewingCurrentPeriod && <button className="current-period-button" onClick={goToCurrentPayrollPeriod}>Hiện tại</button>}
                   </div>
-
                   <div className="year-picker" aria-label="Chọn năm">
-                    <button
-                      className="year-nav-button"
-                      onClick={() => updateData({ year: data.year - 1 })}
-                      aria-label={`Chọn năm ${data.year - 1}`}
-                    >
-                      <ChevronLeft size={17} />
-                    </button>
+                    <button className="year-nav-button" onClick={() => updateData({ year: data.year - 1 })} aria-label={`Chọn năm ${data.year - 1}`}><ChevronLeft size={17} /></button>
                     <label className="year-select-wrap">
                       <span>Năm</span>
-                      <select
-                        value={data.year}
-                        onChange={(event) => updateData({ year: Number(event.target.value) })}
-                        aria-label="Năm của kỳ lương"
-                      >
+                      <select value={data.year} onChange={(event) => updateData({ year: Number(event.target.value) })} aria-label="Năm của kỳ lương">
                         {yearOptions.map(year => <option key={year} value={year}>{year}</option>)}
                       </select>
                     </label>
-                    <button
-                      className="year-nav-button"
-                      onClick={() => updateData({ year: data.year + 1 })}
-                      aria-label={`Chọn năm ${data.year + 1}`}
-                    >
-                      <ChevronRight size={17} />
-                    </button>
+                    <button className="year-nav-button" onClick={() => updateData({ year: data.year + 1 })} aria-label={`Chọn năm ${data.year + 1}`}><ChevronRight size={17} /></button>
                   </div>
-
                   <div className="period-picker-label">Chọn tháng</div>
                   <div className="month-dropdown-grid">
                     {Array.from({ length: 12 }, (_, i) => {
-                      const m = i + 1;
+                      const periodMonth = i + 1;
                       return (
-                        <button
-                          key={m}
-                          className={`month-dropdown-item ${activeTab === m ? 'selected' : ''}`}
-                          onClick={() => {
-                            setActiveTab(m);
-                            setShowMonthDropdown(false);
-                          }}
-                          aria-current={activeTab === m ? 'date' : undefined}
-                        >
-                          <span>T{String(m).padStart(2, '0')}</span>
-                          <small>Tháng {m}</small>
+                        <button key={periodMonth} className={`month-dropdown-item ${activeTab === periodMonth ? 'selected' : ''}`} onClick={() => { setActiveTab(periodMonth); setShowMonthDropdown(false); }} aria-current={activeTab === periodMonth ? 'date' : undefined}>
+                          <span>T{String(periodMonth).padStart(2, '0')}</span><small>Tháng {periodMonth}</small>
                         </button>
                       );
                     })}
                   </div>
-                  <div className="period-dropdown-footer">
-                    <CalendarDays size={14} aria-hidden="true" />
-                    <span>{selectedPeriodRange}</span>
-                  </div>
+                  <div className="period-dropdown-footer"><CalendarDays size={14} aria-hidden="true" /><span>{selectedPeriodRange}</span></div>
                 </div>
               )}
             </div>
