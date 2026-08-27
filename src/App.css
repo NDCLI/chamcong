@@ -912,7 +912,7 @@ h1 svg, h2 svg, h3 svg { vertical-align: middle; margin-right: 5px; flex-shrink:
 }
 
 .month-dropdown-item {
-  min-height: 48px;
+  min-height: 40px;
   display: grid;
   place-content: center;
   gap: 0;
@@ -930,7 +930,6 @@ h1 svg, h2 svg, h3 svg { vertical-align: middle; margin-right: 5px; flex-shrink:
 }
 
 .month-dropdown-item span { color: #eef2ff; font-size: .78rem; font-weight: 900; line-height: 1.2; }
-.month-dropdown-item small { color: #7f8797; font-size: .54rem; font-weight: 700; line-height: 1.2; }
 
 .month-dropdown-item:hover {
   background: rgba(255, 255, 255, .07);
@@ -944,8 +943,7 @@ h1 svg, h2 svg, h3 svg { vertical-align: middle; margin-right: 5px; flex-shrink:
   border-color: rgba(221,214,254,.22);
   box-shadow: 0 8px 20px rgba(49,46,129,.38), inset 0 1px rgba(255,255,255,.1);
 }
-.month-dropdown-item.selected span,
-.month-dropdown-item.selected small { color: #fff; }
+.month-dropdown-item.selected span { color: #fff; }
 
 .month-dropdown-item:active {
   transform: scale(0.95);
@@ -1375,7 +1373,7 @@ h1 svg, h2 svg, h3 svg { vertical-align: middle; margin-right: 5px; flex-shrink:
   }
 
   .month-dropdown-item {
-    min-height: 54px;
+    min-height: 44px;
     padding: 10px 0;
     font-size: 0.85rem;
   }
@@ -2985,6 +2983,276 @@ body { font-size: var(--fs-sm); }
     top: auto;
     transform: none;
   }
+}
+
+/* ==========================================================================
+   THEME, DENSITY, ROW ACCENTS, SPARKLINE
+   Everything below reads from tokens only, so a theme swap is a token swap.
+   ========================================================================== */
+
+/* ---- 1. Light theme ------------------------------------------------------ */
+/* The ink ramp inverts: ink-950 (page) becomes the lightest, ink-700 the
+   darkest, so every existing `background: var(--ink-800)` keeps working. */
+:root[data-theme='light'] {
+  --ink-950: #f2f5fa;
+  --ink-900: #e9eef6;
+  --ink-850: #ffffff;
+  --ink-800: #ffffff;
+  --ink-750: #eef2f8;
+  --ink-700: #dde5f0;
+  --rule: rgba(30, 55, 90, 0.1);
+  --rule-strong: rgba(30, 55, 90, 0.18);
+  --jade-600: #0b7a63;
+  --jade-500: #0e9b7c;
+  --jade-400: #0b7a63;
+  --jade-300: #0b7a63;
+  --jade-ink: #eafaf5;
+  --jade-wash: rgba(14, 155, 124, 0.1);
+  --amber-400: #a86a05;
+  --amber-300: #a86a05;
+  --amber-wash: rgba(168, 106, 5, 0.1);
+  --coral-400: #cf3f5c;
+  --coral-wash: rgba(207, 63, 92, 0.09);
+  --sky-400: #1c6fc4;
+  --text-hi: #0d1a2b;
+  --text-main: #0d1a2b;
+  --text: #46586f;
+  --text-muted: #46586f;
+  --text-dim: #6b7b91;
+  --shadow-1: 0 1px 2px rgba(20, 40, 70, 0.08);
+  --shadow-2: 0 10px 30px rgba(20, 40, 70, 0.1);
+  --shadow: 0 18px 50px rgba(20, 40, 70, 0.12);
+  /* index.css paints html/body from --bg; without this the page keeps the
+     dark canvas behind every translucent surface. */
+  --bg: #f2f5fa;
+  --code-bg: #e9eef6;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] { color-scheme: dark; }
+
+/* Hardcoded darks left over from earlier layers. */
+:root[data-theme='light'] .header { background: #ffffff; }
+:root[data-theme='light'] .account-menu { background: #ffffff; }
+:root[data-theme='light'] .table-footer-row td { background: #e6f4ef !important; }
+:root[data-theme='light'] .bd-row.deduction-total,
+:root[data-theme='light'] .bd-row.deduction-total .money-value { color: var(--coral-400); }
+:root[data-theme='light'] .data-table tr.we td { color: #a63b52; }
+:root[data-theme='light'] .data-table tr.hol td,
+:root[data-theme='light'] .data-table tr.tet td,
+:root[data-theme='light'] .data-table tr.lunar-hol td { color: #8f2740; }
+:root[data-theme='light'] .data-table tr.cur td { color: #05564a; }
+:root[data-theme='light'] .modal-overlay { background: rgba(18, 32, 52, 0.42); }
+:root[data-theme='light'] .modal-content,
+:root[data-theme='light'] .settings-modal { background: rgba(255, 255, 255, 0.98); }
+:root[data-theme='light'] .modal-content h2 { color: var(--jade-500); }
+:root[data-theme='light'] .form-group input,
+:root[data-theme='light'] .form-group textarea,
+:root[data-theme='light'] .settings-item-row input,
+:root[data-theme='light'] .settings-item-row .other-input,
+:root[data-theme='light'] .other-input,
+:root[data-theme='light'] .form-group input:focus,
+:root[data-theme='light'] .form-group textarea:focus,
+:root[data-theme='light'] .other-input:focus { background: #ffffff !important; }
+
+/* ---- 2. Mesh gradient background ---------------------------------------- */
+/* Replaces the 56px graph-paper grid, which competed with the ledger rules. */
+body::before {
+  background-image:
+    radial-gradient(42vw 42vw at 8% -6%, rgba(45, 212, 167, 0.11), transparent 68%),
+    radial-gradient(38vw 38vw at 98% 4%, rgba(99, 179, 245, 0.09), transparent 66%),
+    radial-gradient(46vw 40vw at 52% 108%, rgba(242, 116, 138, 0.07), transparent 70%);
+  background-size: auto;
+  mask-image: none;
+}
+
+:root[data-theme='light'] body::before {
+  background-image:
+    radial-gradient(42vw 42vw at 8% -6%, rgba(14, 155, 124, 0.13), transparent 68%),
+    radial-gradient(38vw 38vw at 98% 4%, rgba(28, 111, 196, 0.1), transparent 66%),
+    radial-gradient(46vw 40vw at 52% 108%, rgba(207, 63, 92, 0.08), transparent 70%);
+}
+
+:root[data-theme='light'] body {
+  background:
+    radial-gradient(circle at 12% -8%, rgba(14, 155, 124, 0.07), transparent 31%),
+    linear-gradient(180deg, var(--ink-900), var(--ink-950));
+}
+
+/* ---- 3. Row state accents ----------------------------------------------- */
+/* The day column carries the marks so the OT inputs stay visually clean. */
+.data-table tbody td:first-child { position: relative; }
+
+/* Today: a solid rail down the left edge of the row. */
+.data-table tr.cur td:first-child::before {
+  content: '';
+  position: absolute;
+  inset: 2px auto 2px 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--jade-500);
+}
+
+/* Any row with hours logged: a dot beside the date. */
+.data-table tr.has-ot td:first-child::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 50%;
+  background: var(--amber-400);
+}
+
+/* Weekends read as a band rather than as an error state. */
+.data-table tr.we td {
+  background: linear-gradient(90deg, rgba(99, 179, 245, 0.09), rgba(99, 179, 245, 0.045));
+}
+:root[data-theme='light'] .data-table tr.we td {
+  background: linear-gradient(90deg, rgba(28, 111, 196, 0.09), rgba(28, 111, 196, 0.04));
+}
+.data-table tr.we td:first-child::before {
+  content: '';
+  position: absolute;
+  inset: 2px auto 2px 0;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--sky-400);
+  opacity: 0.55;
+}
+.data-table tr.cur.we td:first-child::before {
+  width: 3px;
+  background: var(--jade-500);
+  opacity: 1;
+}
+
+/* ---- 4. Hero net card + sparkline --------------------------------------- */
+.net-final {
+  padding-bottom: 12px;
+  border-color: rgba(45, 212, 167, 0.24);
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(45, 212, 167, 0.14), transparent 72%),
+    var(--ink-850);
+  box-shadow: var(--shadow-2), inset 0 1px rgba(255, 255, 255, 0.04);
+}
+:root[data-theme='light'] .net-final {
+  border-color: rgba(14, 155, 124, 0.3);
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(14, 155, 124, 0.12), transparent 72%),
+    var(--ink-850);
+}
+.net-final.negative {
+  border-color: rgba(242, 116, 138, 0.3);
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(242, 116, 138, 0.14), transparent 72%),
+    var(--ink-850);
+}
+.net-final-value strong { font-size: clamp(24px, 2.4vw, 34px); }
+
+.net-sparkline {
+  position: relative;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+.net-sparkline svg {
+  display: block;
+  width: 100%;
+  height: 30px;
+}
+.net-sparkline .spark-dot-layer {
+  position: absolute;
+  inset: 8px 0 auto 0;
+  pointer-events: none;
+}
+.spark-line {
+  fill: none;
+  stroke: var(--jade-400);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.spark-area { fill: var(--jade-wash); stroke: none; }
+.spark-dot { fill: var(--jade-400); }
+.net-final.negative .spark-line,
+.net-final.negative .spark-dot { stroke: var(--coral-400); fill: var(--coral-400); }
+.net-final.negative .spark-area { fill: var(--coral-wash); }
+.spark-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  color: var(--text-dim);
+  font-size: var(--fs-3xs);
+  font-weight: 700;
+}
+
+/* ---- 5. Density ---------------------------------------------------------- */
+/* Compact is the shipped default; cozy trades the no-scroll guarantee on short
+   viewports for breathing room. */
+:root[data-density='cozy'] .data-table td,
+:root[data-density='cozy'] .data-table th { padding-top: 5px; padding-bottom: 5px; }
+:root[data-density='cozy'] .data-table td { font-size: var(--fs-md); }
+:root[data-density='cozy'] .editable-cell input { height: 30px; font-size: var(--fs-md); }
+:root[data-density='cozy'] .breakdown-card { padding: 17px 16px 17px 19px; }
+:root[data-density='cozy'] .bd-row { padding-top: 3px; padding-bottom: 3px; }
+:root[data-density='cozy'] .breakdown-cards { gap: var(--sp-5); }
+/* Taller rows outgrow the fixed-height panel, and the panel clips by default
+   so the compact layout stays scroll-free. Cutting the last days of the month
+   out of sight is worse than a scrollbar, so cozy trades one for the other. */
+:root[data-density='cozy'] .ledger-panel {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ---- 6. Appearance controls in settings --------------------------------- */
+.appearance-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--rule);
+}
+.seg-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  background: var(--ink-900);
+}
+.seg-label {
+  padding: 0 6px;
+  color: var(--text-dim);
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 750;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.seg-btn:hover { color: var(--text-hi); background: var(--ink-750); }
+.seg-btn.on {
+  color: var(--jade-400);
+  border-color: rgba(45, 212, 167, 0.36);
+  background: var(--jade-wash);
 }
 
 

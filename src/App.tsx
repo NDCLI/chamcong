@@ -11,6 +11,7 @@ import { EditableCell } from './components/EditableCell'
 import { EditableCurrency } from './components/EditableCurrency'
 import { Clock } from './components/Clock'
 import { SyncLoaderIcon } from './components/SyncLoaderIcon'
+import { Sparkline } from './components/Sparkline'
 import {
   syncToCloud,
   syncFromCloud,
@@ -31,7 +32,8 @@ import {
   TrendingUp, User as UserIcon, Cloud, Settings, LogOut,
   Plus, Minus, CheckCircle, XCircle, AlertTriangle,
   Lock, KeyRound, DollarSign, Gift, CalendarDays,
-  Upload, Download, ChevronLeft, ChevronRight, ChevronDown
+  Upload, Download, ChevronLeft, ChevronRight, ChevronDown,
+  Sun, Moon
 } from 'lucide-react'
 
 const isSundayIso = (dateIso: string) => new Date(`${dateIso}T00:00:00`).getDay() === 0;
@@ -45,6 +47,25 @@ function App() {
   const [activeTab, setActiveTab] = useState<number>(() => getPayrollPeriod().month);
   const [showMonthDropdown, setShowMonthDropdown] = useState<boolean>(false);
   const monthNavRef = useRef<HTMLDivElement>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('salary_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  });
+  const [density, setDensity] = useState<'compact' | 'cozy'>(() =>
+    localStorage.getItem('salary_density') === 'cozy' ? 'cozy' : 'compact'
+  );
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('salary_theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.density = density;
+    localStorage.setItem('salary_density', density);
+  }, [density]);
+
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -673,6 +694,38 @@ function App() {
     }
   };
 
+  // Net salary for an arbitrary month, used by the sparkline. Mirrors the
+  // arithmetic in renderMonthTab but returns only the final figure.
+  const netForMonth = (month: number): number => {
+    const mData = data.months[month];
+    if (!mData) return 0;
+    let a = 0, b = 0, c = 0, ba = 0, bb = 0, bc = 0;
+    datesOfMonth(data.year, month).forEach(d => {
+      const ot = mData.ot[getLocalDateStr(d)] || [0, 0, 0, 0];
+      const r0 = splitOvertime(ot[0] || 0, 0);
+      const r1 = splitOvertime(ot[1] || 0, 1);
+      const r2 = splitOvertime(ot[2] || 0, 2, d.getDay() === 0);
+      a += r0.normal; b += r1.normal; c += r2.normal;
+      ba += r0.bonus; bb += r1.bonus; bc += r2.bonus;
+    });
+    const st = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
+    const alw = (st.allowances || []).reduce((acc, x) => acc + x.amount, 0);
+    const amounts = mData.bonusAmounts || [];
+    const bns = (st.bonuses || []).reduce((acc, x, i) => acc + (amounts[i] ?? x.amount), 0)
+      + (mData.bonuses || []).reduce((acc, x) => acc + x.amount, 0);
+    const ded = (st.other_deduction || 0) + (st.deductions || []).reduce((acc, x) => acc + x.amount, 0);
+    const cfg = { ...defaultConfig };
+    cfg.rates = {
+      ...cfg.rates,
+      bhxh: st.bhxh_pct / 100,
+      bhyt: st.bhyt_pct / 100,
+      bhtn: st.bhtn_pct / 100,
+      cong_doan: st.cong_doan,
+      other_deduction: ded
+    };
+    return calc(data.lcb, a, b, c, mData.other, ba, bb, bc, alw, bns, month, data.dependents, cfg).net;
+  };
+
   // Render Month Tab
   const renderMonthTab = (month: number) => {
     const dates = datesOfMonth(data.year, month);
@@ -744,6 +797,10 @@ function App() {
     const bonus200Pay = Math.round(hourlyRate * hBonus200 * 2);
     const bonus300Pay = Math.round(hourlyRate * hBonus300 * 3);
 
+    // Last 6 periods ending at the one on screen, clamped to this year.
+    const sparkMonths = Array.from({ length: 6 }, (_, i) => month - 5 + i).filter(m => m >= 1);
+    const sparkValues = sparkMonths.map(m => (m === month ? s.net : netForMonth(m)));
+
     return (
       <div className="month-view">
         <div className="pane-switch" role="tablist" aria-label="Chọn khu vực hiển thị">
@@ -814,6 +871,8 @@ function App() {
                   else if (isHol) rowClass = "hol";
                   else if (lunarHolName) rowClass = "lunar-hol";
                   else if (isWe) rowClass = "we";
+                  const hasOt = (ot[0] || 0) + (ot[1] || 0) + (ot[2] || 0) > 0;
+                  if (hasOt) rowClass += " has-ot";
 
                   return (
                     <tr key={dateIso} className={rowClass} title={lunarHolName || undefined}>
@@ -982,6 +1041,7 @@ function App() {
               <div className={`breakdown-card net-final ${s.net < 0 ? 'negative' : ''}`} aria-label={`Thực nhận ${fmt(s.net)} đồng`}>
                 <h3>THỰC NHẬN</h3>
                 <div className="net-final-value"><strong>{fmt(s.net)}</strong><small> VNĐ</small></div>
+                <Sparkline months={sparkMonths} values={sparkValues} />
               </div>
             </div>
           </aside>
@@ -1224,7 +1284,7 @@ function App() {
                       const periodMonth = i + 1;
                       return (
                         <button key={periodMonth} className={`month-dropdown-item ${activeTab === periodMonth ? 'selected' : ''}`} onClick={() => { setActiveTab(periodMonth); setShowMonthDropdown(false); }} aria-current={activeTab === periodMonth ? 'date' : undefined}>
-                          <span>T{String(periodMonth).padStart(2, '0')}</span><small>Tháng {periodMonth}</small>
+                          <span>Tháng {periodMonth}</span>
                         </button>
                       );
                     })}
@@ -1412,6 +1472,35 @@ function App() {
         <div className="modal-overlay">
           <div className="modal-content settings-modal" role="dialog" aria-labelledby="settings-modal-title" aria-modal="true">
             <h2 id="settings-modal-title"><Settings size={18} /> Cài đặt</h2>
+
+            <div className="appearance-row">
+              <div className="seg-group" role="group" aria-label="Giao diện sáng tối">
+                <span className="seg-label">Giao diện</span>
+                <button
+                  className={`seg-btn ${theme === 'dark' ? 'on' : ''}`}
+                  aria-pressed={theme === 'dark'}
+                  onClick={() => setTheme('dark')}
+                ><Moon size={13} /> Tối</button>
+                <button
+                  className={`seg-btn ${theme === 'light' ? 'on' : ''}`}
+                  aria-pressed={theme === 'light'}
+                  onClick={() => setTheme('light')}
+                ><Sun size={13} /> Sáng</button>
+              </div>
+              <div className="seg-group" role="group" aria-label="Mật độ hiển thị">
+                <span className="seg-label">Mật độ</span>
+                <button
+                  className={`seg-btn ${density === 'compact' ? 'on' : ''}`}
+                  aria-pressed={density === 'compact'}
+                  onClick={() => setDensity('compact')}
+                >Gọn</button>
+                <button
+                  className={`seg-btn ${density === 'cozy' ? 'on' : ''}`}
+                  aria-pressed={density === 'cozy'}
+                  onClick={() => setDensity('cozy')}
+                >Thoáng</button>
+              </div>
+            </div>
 
             <div className="settings-grid">
               {/* CỘT TRÁI: Lương & Khấu trừ */}
