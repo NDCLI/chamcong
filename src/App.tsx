@@ -872,6 +872,7 @@ function App() {
                   else if (lunarHolName) rowClass = "lunar-hol";
                   else if (isWe) rowClass = "we";
                   const hasOt = (ot[0] || 0) + (ot[1] || 0) + (ot[2] || 0) > 0;
+                  if (d.getDay() === 0 && rowClass === "we") rowClass += " sun";
                   if (hasOt) rowClass += " has-ot";
 
                   return (
