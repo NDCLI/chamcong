@@ -404,7 +404,7 @@ export function calc(
 
   const ovt = Math.round((lcb / r.gio_chuan) * (h150 * 1.5 + h200 * 2 + h300 * 3));
   const bonus_ot_pay = Math.round((lcb / r.gio_chuan) * (hBonus150 * 1.5 + hBonus200 * 2 + hBonus300 * 3));
-  const the = [5, 6, 7, 8].includes(mon) ? lcb * r.thuong_he : 0;
+  const the = [5, 6, 7, 8, 9].includes(mon) ? lcb * r.thuong_he : 0;
   
   const total = lcb + ovt + bonus_ot_pay + other + the + allowanceSum + bonusSum;
   const ded = config.pit_deductions;

@@ -124,12 +124,20 @@ describe('logic.ts', () => {
       expect(result.net).toBeLessThan(0)
     })
 
-    it('handles summer bonus months', () => {
-      const summer = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0)
-      const regular = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0)
+    it.each([5, 6, 7, 8, 9])('includes the summer bonus in salary for month %i', (month) => {
+      const summer = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, month, 0)
+      const regular = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0)
 
-      expect(summer.the).toBeGreaterThan(0)
-      expect(regular.the).toBe(0)
+      expect(summer.the).toBe(1000000)
+      expect(summer.total_income).toBe(11000000)
+      expect(summer.net).toBe(regular.net + 1000000)
+    })
+
+    it.each([1, 2, 3, 4, 10, 11, 12])('excludes the summer bonus from month %i', (month) => {
+      const result = calc(10000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, month, 0)
+
+      expect(result.the).toBe(0)
+      expect(result.total_income).toBe(10000000)
     })
 
     it('calculates bonus OT pay correctly', () => {
