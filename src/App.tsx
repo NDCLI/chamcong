@@ -5,6 +5,7 @@ import { calc, fmt, pf, datesOfMonth, defaultConfig, getPayrollPeriod, isTet, is
 import type { AppData, AppSettings, Allowance, SyncStatus } from './types'
 import { DEFAULT_SETTINGS, WEEKDAYS } from './constants'
 import { storageDataKey, storageSyncKey, getLocalDateStr } from './storage'
+import { migratePayrollData, payrollMonthKey } from './payrollData'
 import { cacheHolidayCalendar, getCachedHolidayCalendar, isPublicHoliday, isPublicHolidayCalendar } from './holidayCalendar'
 import { isStoredAppData, hasMeaningfulData, hashGuestCode, isValidPassphrase } from './helpers'
 import { EditableCell } from './components/EditableCell'
@@ -126,40 +127,14 @@ function App() {
       lcb: 0,
       dependents: 0,
       months: {},
+      payrollCalendar: 'calendar-month',
       settings: { ...DEFAULT_SETTINGS },
       lastUpdated: 0
     };
     for (let m = 1; m <= 12; m++) {
-      initData.months[m] = { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
+      initData.months[payrollMonthKey(initData.year, m)] = { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
     }
     return initData;
-  };
-
-  // Migration: ensure index 3 has the correct bonus calculated from raw OT values
-  const migrateOldLateData = (appData: AppData): AppData => {
-    const migrated = { ...appData, months: { ...appData.months } };
-    for (const monthKey of Object.keys(migrated.months)) {
-      const monthData = migrated.months[monthKey];
-      if (monthData?.ot) {
-        const newOt = { ...monthData.ot };
-        for (const dateKey of Object.keys(newOt)) {
-          const arr = newOt[dateKey];
-          if (arr && arr.length >= 3) {
-            const raw0 = arr[0] || 0;
-            const raw1 = arr[1] || 0;
-            const raw2 = arr[2] || 0;
-            const res0 = splitOvertime(raw0, 0);
-            const res1 = splitOvertime(raw1, 1);
-            const res2 = splitOvertime(raw2, 2, isSundayIso(dateKey));
-            const totalBonus = Math.round((res0.bonus + res1.bonus + res2.bonus) * 100) / 100;
-
-            newOt[dateKey] = [raw0, raw1, raw2, totalBonus];
-          }
-        }
-        migrated.months[monthKey] = { ...monthData, ot: newOt };
-      }
-    }
-    return migrated;
   };
 
   const [user, setUser] = useState<User | null>(null);
@@ -211,6 +186,7 @@ function App() {
   const [autoSyncCode, setAutoSyncCode] = useState('');
   const isUserInputRef = useRef(false);
   const [accountHydrated, setAccountHydrated] = useState(false);
+  const [guestHydrated, setGuestHydrated] = useState(false);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -246,6 +222,7 @@ function App() {
   useEffect(() => {
     const unsubscribe = watchAuthState((nextUser) => {
       if (nextUser) {
+        setGuestHydrated(false);
         localStorage.setItem('has_firebase_session', '1');
       } else {
         localStorage.removeItem('has_firebase_session');
@@ -275,7 +252,7 @@ function App() {
         try {
           const parsedData: unknown = JSON.parse(saved);
           if (isStoredAppData(parsedData)) {
-            localData = parsedData;
+            localData = migratePayrollData(parsedData);
             hasSavedLocalData = true;
           }
         } catch {
@@ -291,7 +268,7 @@ function App() {
           const localTime = Number(localData.lastUpdated) || 0;
 
           if (hasSavedLocalData && hasMeaningfulData(localData) && cloudTime > 0 && localTime > cloudTime) {
-            setData(migrateOldLateData(localData));
+            setData(migratePayrollData(localData));
             setSyncStatus({ state: 'syncing', message: '⏳ Dữ liệu trên máy mới hơn, đang đồng bộ lên Cloud...' });
             const wasUploaded = await syncAccountToCloud(user.uid, localData);
             setSyncStatus({
@@ -301,19 +278,19 @@ function App() {
                 : '✅ Cloud có dữ liệu mới hơn, giữ nguyên dữ liệu Cloud.'
             });
           } else {
-            const cloudAccountData = cloudData as AppData;
-            setData(migrateOldLateData(cloudAccountData));
+            const cloudAccountData = migratePayrollData(cloudData as AppData);
+            setData(cloudAccountData);
             localStorage.setItem(storageDataKey(user.uid), JSON.stringify(cloudAccountData));
             setSyncStatus({ state: 'success', message: '✅ Đã đồng bộ dữ liệu theo tài khoản.' });
           }
         } else {
-          setData(migrateOldLateData(localData));
+          setData(migratePayrollData(localData));
           await syncAccountToCloud(user.uid, localData);
           setSyncStatus({ state: 'success', message: '✅ Đã tạo dữ liệu Cloud cho tài khoản.' });
         }
       } catch (e: unknown) {
         console.error('Account sync load error:', e);
-        setData(migrateOldLateData(localData));
+        setData(migratePayrollData(localData));
         setSyncStatus({ state: 'error', message: '❌ Không tải được dữ liệu tài khoản, đang dùng dữ liệu máy này.' });
       } finally {
         setAccountHydrated(true);
@@ -334,6 +311,7 @@ function App() {
     if (user || !guestName) return;
 
     const loadGuestData = () => {
+      setGuestHydrated(true);
       const guestSyncCode = localStorage.getItem(storageSyncKey(null));
       if (guestSyncCode) {
         setAutoSyncCode(guestSyncCode);
@@ -344,7 +322,7 @@ function App() {
         try {
           const parsedData: unknown = JSON.parse(saved);
           if (isStoredAppData(parsedData)) {
-            setData(migrateOldLateData(parsedData));
+            setData(migratePayrollData(parsedData));
             return;
           }
         } catch {
@@ -356,6 +334,11 @@ function App() {
 
     loadGuestData();
   }, [guestName, user]);
+
+  useEffect(() => {
+    if (user || !guestName || !guestHydrated) return;
+    localStorage.setItem(storageDataKey(null), JSON.stringify(data));
+  }, [data, guestName, guestHydrated, user]);
 
   useEffect(() => {
     if (!user || !accountHydrated) return;
@@ -419,6 +402,7 @@ function App() {
 
   const yearOptions = Array.from(new Set([
     ...Array.from({ length: 11 }, (_, index) => new Date().getFullYear() - 5 + index),
+    ...Object.keys(data.months).map(key => Number(key.slice(0, 4))),
     data.year
   ])).sort((a, b) => a - b);
 
@@ -445,7 +429,7 @@ function App() {
     isUserInputRef.current = true;
     if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => {
-      const monthData = prev.months[month] || { other: 0, ot: {} };
+      const monthData = prev.months[payrollMonthKey(prev.year, month)] || { other: 0, ot: {} };
       const currentOT = monthData.ot[dateIso] || [0, 0, 0, 0];
       const newOT = [...currentOT];
       const numericVal = pf(value);
@@ -463,7 +447,7 @@ function App() {
         ...prev,
         months: {
           ...prev.months,
-          [month]: {
+          [payrollMonthKey(prev.year, month)]: {
             ...monthData,
             ot: {
               ...monthData.ot,
@@ -480,12 +464,12 @@ function App() {
     isUserInputRef.current = true;
     if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => {
-      const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [] };
+      const monthData = prev.months[payrollMonthKey(prev.year, month)] || { other: 0, ot: {}, bonusAmounts: [] };
       return {
         ...prev,
         months: {
           ...prev.months,
-          [month]: { ...monthData, other: value }
+          [payrollMonthKey(prev.year, month)]: { ...monthData, other: value }
         },
         lastUpdated: Date.now()
       };
@@ -496,7 +480,7 @@ function App() {
     isUserInputRef.current = true;
     if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => {
-      const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
+      const monthData = prev.months[payrollMonthKey(prev.year, month)] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
       const currentAmounts = monthData.bonusAmounts || [];
       const newAmounts = [...currentAmounts];
       newAmounts[bonusIndex] = amount;
@@ -504,7 +488,7 @@ function App() {
         ...prev,
         months: {
           ...prev.months,
-          [month]: { ...monthData, bonusAmounts: newAmounts }
+          [payrollMonthKey(prev.year, month)]: { ...monthData, bonusAmounts: newAmounts }
         },
         lastUpdated: Date.now()
       };
@@ -515,13 +499,13 @@ function App() {
     isUserInputRef.current = true;
     if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => {
-      const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
+      const monthData = prev.months[payrollMonthKey(prev.year, month)] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
       const currentBonuses = monthData.bonuses || [];
       return {
         ...prev,
         months: {
           ...prev.months,
-          [month]: { ...monthData, bonuses: [...currentBonuses, { name: '', amount: 0 }] }
+          [payrollMonthKey(prev.year, month)]: { ...monthData, bonuses: [...currentBonuses, { name: '', amount: 0 }] }
         },
         lastUpdated: Date.now()
       };
@@ -532,12 +516,12 @@ function App() {
     isUserInputRef.current = true;
     if (autoSyncCode.trim()) setSyncStatus({ state: 'syncing', message: 'Đang tự động đồng bộ lên Cloud...' });
     setData(prev => {
-      const monthData = prev.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
+      const monthData = prev.months[payrollMonthKey(prev.year, month)] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
       return {
         ...prev,
         months: {
           ...prev.months,
-          [month]: { ...monthData, bonuses }
+          [payrollMonthKey(prev.year, month)]: { ...monthData, bonuses }
         },
         lastUpdated: Date.now()
       };
@@ -579,7 +563,7 @@ function App() {
       if (user) localStorage.setItem(storageSyncKey(user.uid), syncCode);
       const cloudData = await syncFromCloud(syncCode);
       if (cloudData) {
-        setData(migrateOldLateData(cloudData));
+        setData(migratePayrollData(cloudData));
         setAutoSyncCode(syncCode.trim());
         setSyncStatus({ state: 'success', message: '✅ Tải về thành công! Tự động đồng bộ đã bật.' });
       }
@@ -609,13 +593,14 @@ function App() {
       localStorage.setItem('salary_guest_name', name);
       localStorage.setItem(storageSyncKey(null), hashedCode);
 
+      setGuestHydrated(false);
       setGuestName(name);
       setAutoSyncCode(hashedCode);
       setSyncCode(hashedCode);
 
       const cloudData = await syncFromCloud(hashedCode);
       if (cloudData) {
-        setData(migrateOldLateData(cloudData as AppData));
+        setData(migratePayrollData(cloudData as AppData));
         setSyncStatus({ state: 'success', message: '✅ Đã tải dữ liệu từ Cloud.' });
       } else {
         setSyncStatus({ state: 'success', message: '✅ Bắt đầu với dữ liệu mới.' });
@@ -697,8 +682,7 @@ function App() {
   // Net salary for an arbitrary month, used by the sparkline. Mirrors the
   // arithmetic in renderMonthTab but returns only the final figure.
   const netForMonth = (month: number): number => {
-    const mData = data.months[month];
-    if (!mData) return 0;
+    const mData = data.months[payrollMonthKey(data.year, month)] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
     let a = 0, b = 0, c = 0, ba = 0, bb = 0, bc = 0;
     datesOfMonth(data.year, month).forEach(d => {
       const ot = mData.ot[getLocalDateStr(d)] || [0, 0, 0, 0];
@@ -729,7 +713,7 @@ function App() {
   // Render Month Tab
   const renderMonthTab = (month: number) => {
     const dates = datesOfMonth(data.year, month);
-    const mData = data.months[month] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
+    const mData = data.months[payrollMonthKey(data.year, month)] || { other: 0, ot: {}, bonusAmounts: [], bonuses: [] };
 
     let h150 = 0, h200 = 0, h300 = 0;
     let hBonus150 = 0, hBonus200 = 0, hBonus300 = 0;
@@ -1134,7 +1118,7 @@ function App() {
             Dữ liệu được đồng bộ an toàn qua Firebase và sử dụng được trên nhiều thiết bị.
           </p>
           <div className="landing-features">
-            <div>• Tính lương theo tháng và hiển thị kết quả rõ ràng.</div>
+            <div>• Tính công từ ngày 1 đến hết tháng, hiển thị lương rõ ràng.</div>
             <div>• Quản lý tăng ca, trợ cấp và khấu trừ tự động.</div>
             <div>• Đồng bộ dữ liệu qua tài khoản đăng nhập.</div>
           </div>
@@ -1266,7 +1250,7 @@ function App() {
               {showMonthDropdown && (
                 <div className="month-dropdown-menu header-period-picker" id="payroll-period-picker" role="dialog" aria-label="Chọn tháng và năm">
                   <div className="period-dropdown-heading">
-                    <div><strong>Chọn kỳ lương</strong><span>Kỳ công từ ngày 25 đến ngày 24</span></div>
+                    <div><strong>Chọn kỳ lương</strong><span>Kỳ công từ ngày 1 đến hết tháng</span></div>
                     {!isViewingCurrentPeriod && <button className="current-period-button" onClick={goToCurrentPayrollPeriod}>Hiện tại</button>}
                   </div>
                   <div className="year-picker" aria-label="Chọn năm">
@@ -1395,6 +1379,7 @@ function App() {
                     void logoutUser(); 
                   } else {
                     localStorage.removeItem('salary_guest_name');
+                    setGuestHydrated(false);
                     setGuestName('');
                   }
                   setShowAccountMenu(false); 
@@ -1696,21 +1681,21 @@ function App() {
 
                 <h3 className="settings-section-title"><CalendarDays size={14} /> Thưởng tháng {activeTab}/{data.year}</h3>
                 <div className="settings-list">
-                  {(data.months[activeTab]?.bonuses || []).map((bn, idx) => (
+                  {(data.months[payrollMonthKey(data.year, activeTab)]?.bonuses || []).map((bn, idx) => (
                     <div key={idx} className="settings-item-row">
                       <input
                         type="text"
                         placeholder="Tên thưởng tháng"
                         value={bn.name}
                         onChange={e => {
-                          const newBns = [...(data.months[activeTab]?.bonuses || [])];
+                          const newBns = [...(data.months[payrollMonthKey(data.year, activeTab)]?.bonuses || [])];
                           newBns[idx] = { ...newBns[idx], name: e.target.value };
                           updateMonthBonuses(activeTab, newBns);
                         }}
                         style={{ flex: 2 }}
                       />
                       <button className="btn-mini-danger" onClick={() => {
-                        const newBns = (data.months[activeTab]?.bonuses || []).filter((_, i) => i !== idx);
+                        const newBns = (data.months[payrollMonthKey(data.year, activeTab)]?.bonuses || []).filter((_, i) => i !== idx);
                         updateMonthBonuses(activeTab, newBns);
                       }}>✕</button>
                     </div>
