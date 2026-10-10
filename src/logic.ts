@@ -1,40 +1,4 @@
-export interface MonthOTData {
-  [dateIso: string]: number[]; // [150, 200, 300, bonus]
-}
-
-export interface MonthData {
-  other: number;
-  ot: MonthOTData;
-  bonusAmounts?: number[];
-  bonuses?: Allowance[];
-}
-
-export interface Allowance {
-  name: string;
-  amount: number;
-}
-
-export interface AppSettings {
-  bhxh_pct: number;
-  bhyt_pct: number;
-  bhtn_pct: number;
-  cong_doan: number;
-  other_deduction: number;
-  deductions?: Allowance[];
-  allowances: Allowance[];
-  bonuses: Allowance[];
-  google_calendar_url?: string;
-}
-
-export interface AppData {
-  profile_name: string;
-  year: number;
-  lcb: number;
-  dependents: number;
-  months: Record<string, MonthData>;
-  settings?: AppSettings;
-  lastUpdated?: number;
-}
+export type { MonthOTData, MonthData, Allowance, AppSettings, AppData } from './types';
 
 export interface RatesConfig {
   bhxh: number;
@@ -358,17 +322,8 @@ export interface PayrollPeriod {
   year: number;
 }
 
-/**
- * Kỳ chấm công chạy từ ngày 25 tháng trước đến ngày 24 của tháng hiển thị.
- * Vì vậy từ ngày 25 trở đi, người dùng mặc định xem kỳ của tháng kế tiếp.
- */
 export function getPayrollPeriod(date: Date = new Date()): PayrollPeriod {
-  const month = date.getMonth() + 1;
-  const year = date.getFullYear();
-
-  if (date.getDate() < 25) return { month, year };
-  if (month === 12) return { month: 1, year: year + 1 };
-  return { month: month + 1, year };
+  return { month: date.getMonth() + 1, year: date.getFullYear() };
 }
 
 /** Di chuyển kỳ lương, đồng thời cuộn năm đúng khi qua tháng 1/12. */
@@ -434,14 +389,8 @@ export function calc(
 }
 
 export function datesOfMonth(year: number, month: number): Date[] {
-  const pm = month === 1 ? 12 : month - 1;
-  const py = month === 1 ? year - 1 : year;
-  // let's re-check logic.py:
-  // Let's re-check logic.py:
-  // pm, py = (12, year-1) if month == 1 else (month-1, year)
-  // d, end = date(py, pm, 25), date(year, month, 24)
-  const d = new Date(py, pm - 1, 25);
-  const end = new Date(year, month - 1, 24);
+  const d = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0);
   const out: Date[] = [];
   while (d <= end) {
     out.push(new Date(d));
