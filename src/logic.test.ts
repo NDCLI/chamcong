@@ -35,36 +35,35 @@ describe('logic.ts', () => {
     })
   })
 
-  describe('datesOfMonth - Generate dates array', () => {
-    it('generates correct dates for January 2026', () => {
-      const dates = datesOfMonth(2026, 1)
-      expect(dates).toHaveLength(31)
-      expect(dates[0].getDate()).toBe(25) // 25 Dec 2025
-      expect(dates[30].getDate()).toBe(24) // 24 Jan 2026
+  describe('datesOfMonth - Generate calendar month dates', () => {
+    it.each([
+      [2026, 1, 31], [2026, 2, 28], [2024, 2, 29],
+      [2026, 4, 30], [2026, 12, 31], [2027, 1, 31],
+    ])('generates every day of %i/%i (%i days)', (year, month, days) => {
+      const dates = datesOfMonth(year, month)
+      expect(dates).toHaveLength(days)
+      dates.forEach((date, index) => {
+        expect(date.getFullYear()).toBe(year)
+        expect(date.getMonth() + 1).toBe(month)
+        expect(date.getDate()).toBe(index + 1)
+      })
     })
 
-    it('handles February correctly', () => {
-      const dates = datesOfMonth(2026, 2)
-      expect(dates).toHaveLength(31)
-      expect(dates[0].getMonth()).toBe(0) // January (0-indexed)
-      expect(dates[0].getDate()).toBe(25)
-    })
-
-    it('handles month transitions correctly', () => {
-      const dates = datesOfMonth(2026, 12)
-      expect(dates[0].getDate()).toBe(25) // 25 Nov
-      expect(dates[dates.length - 1].getDate()).toBe(24) // 24 Dec
+    it('covers the full year without gaps or overlapping months', () => {
+      const dates = Array.from({ length: 12 }, (_, i) => datesOfMonth(2026, i + 1)).flat()
+      expect(dates).toHaveLength(365)
+      expect(new Set(dates.map(d => d.getTime())).size).toBe(365)
     })
   })
 
   describe('payroll period navigation', () => {
-    it('moves to the next payroll month from day 25', () => {
-      expect(getPayrollPeriod(new Date(2026, 7, 24))).toEqual({ month: 8, year: 2026 })
-      expect(getPayrollPeriod(new Date(2026, 7, 25))).toEqual({ month: 9, year: 2026 })
+    it.each([1, 24, 25, 31])('stays in the current month on day %i', day => {
+      expect(getPayrollPeriod(new Date(2026, 7, day))).toEqual({ month: 8, year: 2026 })
     })
 
-    it('rolls December into January of the next year', () => {
-      expect(getPayrollPeriod(new Date(2026, 11, 25))).toEqual({ month: 1, year: 2027 })
+    it('only rolls December into January on January 1', () => {
+      expect(getPayrollPeriod(new Date(2026, 11, 31))).toEqual({ month: 12, year: 2026 })
+      expect(getPayrollPeriod(new Date(2027, 0, 1))).toEqual({ month: 1, year: 2027 })
       expect(shiftPayrollPeriod(2026, 12, 1)).toEqual({ month: 1, year: 2027 })
     })
 

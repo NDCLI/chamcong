@@ -32,6 +32,8 @@ export interface AppData {
   lcb: number;
   dependents: number;
   months: Record<string, MonthData>;
+  payrollCalendar?: 'calendar-month';
+  legacyPayrollMonths?: Record<string, MonthData>;
   settings?: AppSettings;
   lastUpdated?: number;
 }
